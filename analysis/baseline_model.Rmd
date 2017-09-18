@@ -1,0 +1,115 @@
+---
+title: "A Simple Keras Facial Keypoint Detector"
+author: "Miles McBain"
+date: 2017-09-19
+output: html_document
+---
+
+<!-- The file analysis/chunks.R contains chunks that define default settings
+shared across the workflowr files. -->
+```{r read-chunk, include=FALSE, cache=FALSE}
+knitr::read_chunk("chunks.R")
+```
+
+<!-- Update knitr chunk options -->
+```{r knitr-opts-chunk, include=FALSE}
+```
+
+<!-- Insert the date the file was last updated -->
+```{r last-updated, echo=FALSE, results='asis'}
+```
+
+<!-- Insert the code version (Git commit SHA1) if Git repository exists and R
+ package git2r is installed -->
+```{r code-version, echo=FALSE, results='asis'}
+```
+
+<!-- Add your analysis here -->
+# Creating a baseline Keras Model
+
+I'm going to build a very basic keras model that can detect a single facial keypoint. Later I will generalise this to many keypoints.
+
+## Source and Wrangle a Training Set
+
+Get the training set:
+
+```{r, results="hide"}
+library(readr)
+train_set <- read_rds("../data/train_processed")
+#theres a problem with image 5987, possible data corruption
+train_set <- train_set[seq(5986),] %>%
+  filter(!is.na(left_eye_center_x), !(is.na(left_eye_center_y)))
+```
+
+The images are 96x96 256 greyscale, represented in 9216 vector pixels.
+
+Check out an image:
+```{r}
+image(matrix(rev(train_set$image[[42]]), 96, 96), col = gray.colors(256))
+```
+
+
+Choose X (the image) and Y (a facial keypoint):
+
+```{r, echo=FALSE}
+X <- train_set$image
+Y_1 <- train_set$left_eye_center_x
+Y_2 <- train_set$left_eye_center_y
+```
+
+Scale `X` pixel values from 0 - 255 to 0 - 1:
+
+```{r}
+X <- unlist(X) / 255
+dim(X) <- c(nrow(train_set), 96*96)
+```
+
+Scale `Y` values from 0 - 96 to 0 - 1:
+
+```{r}
+Y_1 <- Y_1 / 96
+Y_2 <- Y_2 / 96 
+```
+
+## Create a network model
+
+Define a simple model with [256 -> 128 -> 2] with dropout layers that apparently ensure features are distinct. No convolutions yet.
+
+```{r}
+library(keras)
+
+model <- keras_model_sequential() 
+model %>% 
+  layer_dense(units = 256, activation = 'relu', input_shape = c(96*96)) %>%
+  layer_dropout(rate = 0.4) %>% 
+  layer_dense(units = 128, activation = 'relu') %>%
+  layer_dropout(rate = 0.3) %>%
+  layer_dense(units = 2)
+
+model
+```
+
+
+## Compile model
+```{r}
+model %>%
+  compile(loss = 'mean_squared_error', #MSE for continuous output
+          optimizer = optimizer_adam())
+```
+
+## Fit model
+```{r}
+fit_progress <- 
+  model %>%
+  fit(x = X,
+      y = list("left eye centre x" = Y_1, "left eye centre y" = Y_2),
+      epochs = 30,
+      batch_size = 128, 
+      validation_split = 0.2)
+```
+
+## Session information
+
+<!-- Insert the session information into the document -->
+```{r session-info}
+```
