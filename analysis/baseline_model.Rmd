@@ -35,9 +35,13 @@ Get the training set:
 
 ```{r, results="hide"}
 library(readr)
+library(keras)
+library(plotly)
+
 train_set <- read_rds("../data/train_processed")
 #theres a problem with image 5987, possible data corruption
-train_set <- train_set[seq(5986),] %>%
+train_set <- 
+  train_set %>%
   filter(!is.na(left_eye_center_x), !(is.na(left_eye_center_y)))
 ```
 
@@ -76,8 +80,6 @@ Y_2 <- Y_2 / 96
 Define a simple model with [256 -> 128 -> 2] with dropout layers that apparently ensure features are distinct. No convolutions yet.
 
 ```{r}
-library(keras)
-
 model <- keras_model_sequential() 
 model %>% 
   layer_dense(units = 256, activation = 'relu', input_shape = c(96*96)) %>%
@@ -102,11 +104,20 @@ model %>%
 fit_progress <- 
   model %>%
   fit(x = X,
-      y = list("left eye centre x" = Y_1, "left eye centre y" = Y_2),
+      y = matrix(cbind(Y_1, Y_2), ncol = 2),
       epochs = 30,
       batch_size = 128, 
       validation_split = 0.2)
 ```
+
+## Visualise Model
+```{r}
+plot(fit_progress)
+ggplotly()
+```
+
+
+##Load
 
 ## Session information
 
