@@ -91,6 +91,7 @@ model
 
 
 ## Compile model
+
 ```{r}
 model %>%
   compile(loss = 'mean_squared_error', #MSE for continuous output
@@ -98,6 +99,7 @@ model %>%
 ```
 
 ## Fit model
+
 ```{r}
 fit_progress <- 
   model %>%
@@ -107,6 +109,8 @@ fit_progress <-
       batch_size = 128, 
       validation_split = 0.2)
 ```
+
+## Predict on my left eye
 
 ## Session information
 
