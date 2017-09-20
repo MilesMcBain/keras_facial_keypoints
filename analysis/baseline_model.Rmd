@@ -80,15 +80,29 @@ Y_2 <- Y_2 / 96
 Define a simple model with [256 -> 128 -> 2] with dropout layers that apparently ensure features are distinct. No convolutions yet.
 
 ```{r}
-model <- keras_model_sequential() 
-model %>% 
+model_input <- layer_input(shape = c(96*96), dtype = 'float32', name = 'image_input')
+main_network <- 
+  model_input %>%
   layer_dense(units = 256, activation = 'relu', input_shape = c(96*96)) %>%
   layer_dropout(rate = 0.4) %>% 
   layer_dense(units = 128, activation = 'relu') %>%
   layer_dropout(rate = 0.3) %>%
-  layer_dense(units = 2)
+  layer_dense(units = 2, activation = 'relu')
 
-model
+output_y1 <- 
+  main_network %>%
+  layer_dense(units = 1, activation = "linear", name = "output_y1")
+
+output_y2 <-
+  main_network %>%
+  layer_dense(units = 1, activation = "linear", name = "output_y2")
+
+model <- keras_model(
+  inputs = model_input,
+  outputs = c(output_y1, output_y2)
+)
+
+model 
 ```
 
 
@@ -96,7 +110,8 @@ model
 
 ```{r}
 model %>%
-  compile(loss = 'mean_squared_error', #MSE for continuous output
+  compile(loss = 'mean_squared_error', # MSE for continuous output
+          loss_weights = c(0.5, 0.5), # Weight both coords equally 
           optimizer = optimizer_adam())
 ```
 
@@ -106,7 +121,7 @@ model %>%
 fit_progress <- 
   model %>%
   fit(x = X,
-      y = matrix(cbind(Y_1, Y_2), ncol = 2),
+      y = list(output_y1 = Y_1, output_y2 = Y_2),
       epochs = 30,
       batch_size = 128, 
       validation_split = 0.2)
@@ -119,7 +134,25 @@ ggplotly()
 ```
 
 ## Predict on my left eye
+```{r}
+miles_face <- 
+  read_rds("../data/mm_face_vector.rds")
+  
 
+miles_face_matrix <-
+  miles_face %>%
+  `/`(256) %>%
+  matrix(nrow = 1, ncol = 96*96 )
+
+eye_prediction <- 
+  model %>%
+  predict_on_batch(miles_face_matrix)
+
+image(matrix(miles_face %>% rev(), 96, 96) , col = gray.colors(256))
+points(x = 1- eye_prediction[[1]], y= 1- eye_prediction[[2]])
+```
+
+Not bad for a baseline model. Can I do better with convolutions? Most likely!
 ## Session information
 
 <!-- Insert the session information into the document -->
