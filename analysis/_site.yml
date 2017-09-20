@@ -5,8 +5,8 @@ exclude: ["include"]
 navbar:
   title: keras_facial_keypoints
   left:
-    - text: "Home"
-      href: index.html
+    - text: "A Simplse Keypoint Detector"
+      href: baseline_model.html
     - text: "About"
       href: about.html
     - text: "License"

@@ -5,4 +5,4 @@ output:
     toc: false
 ---
 
-Describe your project.
+I'm testing `keras` and `workflowr` in one pass. It has been quite productive.
