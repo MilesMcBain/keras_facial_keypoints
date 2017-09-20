@@ -5,4 +5,4 @@ output:
     toc: false
 ---
 
-A site to host me playing around with Keras.
+A site to host me playing around with Keras and test workflowr.
