@@ -148,8 +148,8 @@ eye_prediction <-
   model %>%
   predict_on_batch(miles_face_matrix)
 
-image(matrix(miles_face %>% rev(), 96, 96) , col = gray.colors(256))
-points(x = 1- eye_prediction[[1]], y= 1- eye_prediction[[2]])
+image(matrix(miles_face %>% rev(), 96, 96) , col = gray.colors(256)) # Have to reverse image for upright viewing
+points(x = 1- eye_prediction[[1]], y= 1- eye_prediction[[2]]) # Reversed image -> Take compliement of coord.
 ```
 
 Not bad for a baseline model. Can I do better with convolutions? Most likely!
