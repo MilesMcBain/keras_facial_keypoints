@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Miles McBain" />
+
+<meta name="date" content="2017-09-19" />
+
+<title>A Simple Keras Facial Keypoint Detector</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-1.1/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-1.1/highlight.js"></script>
+<script src="site_libs/htmlwidgets-0.9/htmlwidgets.js"></script>
+<script src="site_libs/plotly-binding-4.7.1/plotly.js"></script>
+<script src="site_libs/typedarray-0.1/typedarray.min.js"></script>
+<link href="site_libs/crosstalk-1.0.0/css/crosstalk.css" rel="stylesheet" />
+<script src="site_libs/crosstalk-1.0.0/js/crosstalk.min.js"></script>
+<link href="site_libs/plotlyjs-1.29.2/plotly-htmlwidgets.css" rel="stylesheet" />
+<script src="site_libs/plotlyjs-1.29.2/plotly-latest.min.js"></script>
+<link href="site_libs/font-awesome-4.5.0/css/font-awesome.min.css" rel="stylesheet" />
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+  padding-left: 25px;
+  text-indent: 0;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">keras_facial_keypoints</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/jdblischak/workflowr">
+    <span class="fa fa-github"></span>
+     
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">A Simple Keras Facial Keypoint Detector</h1>
+<h4 class="author"><em>Miles McBain</em></h4>
+<h4 class="date"><em>2017-09-19</em></h4>
+
+</div>
+
+
+<!-- The file analysis/chunks.R contains chunks that define default settings
+shared across the workflowr files. -->
+<!-- Update knitr chunk options -->
+<!-- Insert the date the file was last updated -->
+<p><strong>Last updated:</strong> 2017-09-20</p>
+<!-- Insert the code version (Git commit SHA1) if Git repository exists and R
+ package git2r is installed -->
+<p><strong>Code version:</strong> e7102b9</p>
+<!-- Add your analysis here -->
+<div id="creating-a-baseline-keras-model" class="section level1">
+<h1>Creating a baseline Keras Model</h1>
+<p>I’m going to build a very basic keras model that can detect a single facial keypoint. Later I will generalise this to many keypoints.</p>
+<div id="source-and-wrangle-a-training-set" class="section level2">
+<h2>Source and Wrangle a Training Set</h2>
+<p>Get the training set:</p>
+<pre class="r"><code>library(readr)
+library(keras)
+library(plotly)</code></pre>
+<pre><code>Loading required package: ggplot2</code></pre>
+<pre><code>
+Attaching package: &#39;plotly&#39;</code></pre>
+<pre><code>The following object is masked from &#39;package:ggplot2&#39;:
+
+    last_plot</code></pre>
+<pre><code>The following object is masked from &#39;package:stats&#39;:
+
+    filter</code></pre>
+<pre><code>The following object is masked from &#39;package:graphics&#39;:
+
+    layout</code></pre>
+<pre class="r"><code>train_set &lt;- read_rds(&quot;../data/train_processed&quot;)
+# Original data from: https://www.kaggle.com/c/facial-keypoints-detection
+# Preprocessing done in /code/preprocess_kaggle_set.R
+train_set &lt;- 
+  train_set %&gt;%
+  filter(!is.na(left_eye_center_x), !(is.na(left_eye_center_y)))</code></pre>
+<p>The images are 96x96 256 greyscale, represented in 9216 vector pixels.</p>
+<p>Check out an image:</p>
+<pre class="r"><code>image(matrix(rev(train_set$image[[42]]), 96, 96), col = gray.colors(256))</code></pre>
+<p><img src="figure/baseline_model.Rmd/unnamed-chunk-2-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Choose X (the image) and Y (a facial keypoint):</p>
+<p>Scale <code>X</code> pixel values from 0 - 255 to 0 - 1:</p>
+<pre class="r"><code>X &lt;- unlist(X) / 255
+dim(X) &lt;- c(nrow(train_set), 96*96)</code></pre>
+<p>Scale <code>Y</code> values from 0 - 96 to 0 - 1:</p>
+<pre class="r"><code>Y_1 &lt;- Y_1 / 96
+Y_2 &lt;- Y_2 / 96 </code></pre>
+</div>
+<div id="create-a-network-model" class="section level2">
+<h2>Create a network model</h2>
+<p>Define a simple model with [256 -&gt; 128 -&gt; 2] with dropout layers that apparently ensure features are distinct. No convolutions yet.</p>
+<pre class="r"><code>model_input &lt;- layer_input(shape = c(96*96), dtype = &#39;float32&#39;, name = &#39;image_input&#39;)
+main_network &lt;- 
+  model_input %&gt;%
+  layer_dense(units = 256, activation = &#39;relu&#39;, input_shape = c(96*96)) %&gt;%
+  layer_dropout(rate = 0.4) %&gt;% 
+  layer_dense(units = 128, activation = &#39;relu&#39;) %&gt;%
+  layer_dropout(rate = 0.3) %&gt;%
+  layer_dense(units = 2, activation = &#39;relu&#39;)
+
+output_y1 &lt;- 
+  main_network %&gt;%
+  layer_dense(units = 1, activation = &quot;linear&quot;, name = &quot;output_y1&quot;)
+
+output_y2 &lt;-
+  main_network %&gt;%
+  layer_dense(units = 1, activation = &quot;linear&quot;, name = &quot;output_y2&quot;)
+
+model &lt;- keras_model(
+  inputs = model_input,
+  outputs = c(output_y1, output_y2)
+)
+
+model </code></pre>
+<pre><code>Model
+___________________________________________________________________________
+Layer (type)            Output Shape     Param #  Connected to             
+===========================================================================
+image_input (InputLayer (None, 9216)     0                                 
+___________________________________________________________________________
+dense_1 (Dense)         (None, 256)      2359552  image_input[0][0]        
+___________________________________________________________________________
+dropout_1 (Dropout)     (None, 256)      0        dense_1[0][0]            
+___________________________________________________________________________
+dense_2 (Dense)         (None, 128)      32896    dropout_1[0][0]          
+___________________________________________________________________________
+dropout_2 (Dropout)     (None, 128)      0        dense_2[0][0]            
+___________________________________________________________________________
+dense_3 (Dense)         (None, 2)        258      dropout_2[0][0]          
+___________________________________________________________________________
+output_y1 (Dense)       (None, 1)        3        dense_3[0][0]            
+___________________________________________________________________________
+output_y2 (Dense)       (None, 1)        3        dense_3[0][0]            
+===========================================================================
+Total params: 2,392,712
+Trainable params: 2,392,712
+Non-trainable params: 0
+___________________________________________________________________________</code></pre>
+</div>
+<div id="compile-model" class="section level2">
+<h2>Compile model</h2>
+<pre class="r"><code>model %&gt;%
+  compile(loss = &#39;mean_squared_error&#39;, # MSE for continuous output
+          loss_weights = c(0.5, 0.5), # Weight both coords equally 
+          optimizer = optimizer_adam())</code></pre>
+</div>
+<div id="fit-model" class="section level2">
+<h2>Fit model</h2>
+<pre class="r"><code>fit_progress &lt;- 
+  model %&gt;%
+  fit(x = X,
+      y = list(output_y1 = Y_1, output_y2 = Y_2),
+      epochs = 30,
+      batch_size = 128, 
+      validation_split = 0.2)</code></pre>
+</div>
+<div id="visualise-model" class="section level2">
+<h2>Visualise Model</h2>
+<pre class="r"><code>plot(fit_progress)</code></pre>
+<p><img src="figure/baseline_model.Rmd/unnamed-chunk-9-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggplotly()</code></pre>
+<pre><code>We recommend that you use the dev version of ggplot2 with `ggplotly()`
+Install it with: `devtools::install_github(&#39;hadley/ggplot2&#39;)`</code></pre>
+<div id="5e0f427df08" style="width:672px;height:480px;" class="plotly html-widget"></div>
+<script type="application/json" data-for="5e0f427df08">{"x":{"data":[{"x":[1,1.36708860759494,1.73417721518987,2.10126582278481,2.46835443037975,2.83544303797468,3.20253164556962,3.56962025316456,3.93670886075949,4.30379746835443,4.67088607594937,5.0379746835443,5.40506329113924,5.77215189873418,6.13924050632911,6.50632911392405,6.87341772151899,7.24050632911392,7.60759493670886,7.9746835443038,8.34177215189873,8.70886075949367,9.07594936708861,9.44303797468354,9.81012658227848,10.1772151898734,10.5443037974684,10.9113924050633,11.2784810126582,11.6455696202532,12.0126582278481,12.379746835443,12.746835443038,13.1139240506329,13.4810126582278,13.8481012658228,14.2151898734177,14.5822784810127,14.9493670886076,15.3164556962025,15.6835443037975,16.0506329113924,16.4177215189873,16.7848101265823,17.1518987341772,17.5189873417722,17.8860759493671,18.253164556962,18.620253164557,18.9873417721519,19.3544303797468,19.7215189873418,20.0886075949367,20.4556962025316,20.8227848101266,21.1898734177215,21.5569620253165,21.9240506329114,22.2911392405063,22.6582278481013,23.0253164556962,23.3924050632911,23.7594936708861,24.126582278481,24.493670886076,24.8607594936709,25.2278481012658,25.5949367088608,25.9620253164557,26.3291139240506,26.6962025316456,27.0632911392405,27.4303797468354,27.7974683544304,28.1645569620253,28.5316455696203,28.8987341772152,29.2658227848101,29.6329113924051,30],"y":[0.488360663255178,0.466236762065523,0.444674232812085,0.42368413602368,0.403277532229127,0.383465481957243,0.364259045736846,0.345669284096752,0.327707257565779,0.310390151463947,0.293723712768765,0.277689223765037,0.262267551312519,0.247439562270967,0.233186123500138,0.219488101859787,0.206326364209669,0.193681777409541,0.181535208319159,0.169867523798279,0.158903884368603,0.14888891242475,0.139717574082044,0.131283425812631,0.123480024088656,0.116200925382263,0.109339686165598,0.102789862910805,0.0964450120900295,0.0901986901754164,0.0839449419421834,0.0780154797465411,0.0726873906640565,0.067855061110143,0.0634128775002143,0.0592552262496838,0.055276493773965,0.0513710664884716,0.047433330808617,0.0435927915290387,0.0401666957328481,0.0371093497237079,0.0343692122287929,0.0318947419752783,0.0296343976903389,0.0275366381011498,0.0255499219348859,0.0236227079187222,0.0217034547798338,0.0197406212453956,0.0178386373165306,0.0161424915397402,0.0146289128282865,0.0132744367166511,0.0120555987393159,0.0109489344307625,0.00993097932547274,0.00897826895792821,0.0080673388626107,0.00717472457400193,0.0062772736902156,0.00542937358494604,0.0046815699592965,0.00403042872316323,0.00347251578644248,0.00300439705903047,0.00262263845082346,0.00232380587171769,0.00210446523160939,0.00196118244039481,0.0018905234079702,0.00188913241990096,0.00195819161708701,0.00210081825906222,0.00231893534017797,0.00261446585478565,0.00298933279723663,0.00344545916188231,0.00398476794307406,0.00460918213516326],"text":["data: training<br />data: training<br />epoch:  1.000000<br />value: 0.4883606633","data: training<br />data: training<br />epoch:  1.367089<br />value: 0.4662367621","data: training<br />data: training<br />epoch:  1.734177<br />value: 0.4446742328","data: training<br />data: training<br />epoch:  2.101266<br />value: 0.4236841360","data: training<br />data: training<br />epoch:  2.468354<br />value: 0.4032775322","data: training<br />data: training<br />epoch:  2.835443<br />value: 0.3834654820","data: training<br />data: training<br />epoch:  3.202532<br />value: 0.3642590457","data: training<br />data: training<br />epoch:  3.569620<br />value: 0.3456692841","data: training<br />data: training<br />epoch:  3.936709<br />value: 0.3277072576","data: training<br />data: training<br />epoch:  4.303797<br />value: 0.3103901515","data: training<br />data: training<br />epoch:  4.670886<br />value: 0.2937237128","data: training<br />data: training<br />epoch:  5.037975<br />value: 0.2776892238","data: training<br />data: training<br />epoch:  5.405063<br />value: 0.2622675513","data: training<br />data: training<br />epoch:  5.772152<br />value: 0.2474395623","data: training<br />data: training<br />epoch:  6.139241<br />value: 0.2331861235","data: training<br />data: training<br />epoch:  6.506329<br />value: 0.2194881019","data: training<br />data: training<br />epoch:  6.873418<br />value: 0.2063263642","data: training<br />data: training<br />epoch:  7.240506<br />value: 0.1936817774","data: training<br />data: training<br />epoch:  7.607595<br />value: 0.1815352083","data: training<br />data: training<br />epoch:  7.974684<br />value: 0.1698675238","data: training<br />data: training<br />epoch:  8.341772<br />value: 0.1589038844","data: training<br />data: training<br />epoch:  8.708861<br />value: 0.1488889124","data: training<br />data: training<br />epoch:  9.075949<br />value: 0.1397175741","data: training<br />data: training<br />epoch:  9.443038<br />value: 0.1312834258","data: training<br />data: training<br />epoch:  9.810127<br />value: 0.1234800241","data: training<br />data: training<br />epoch: 10.177215<br />value: 0.1162009254","data: training<br />data: training<br />epoch: 10.544304<br />value: 0.1093396862","data: training<br />data: training<br />epoch: 10.911392<br />value: 0.1027898629","data: training<br />data: training<br />epoch: 11.278481<br />value: 0.0964450121","data: training<br />data: training<br />epoch: 11.645570<br />value: 0.0901986902","data: training<br />data: training<br />epoch: 12.012658<br />value: 0.0839449419","data: training<br />data: training<br />epoch: 12.379747<br />value: 0.0780154797","data: training<br />data: training<br />epoch: 12.746835<br />value: 0.0726873907","data: training<br />data: training<br />epoch: 13.113924<br />value: 0.0678550611","data: training<br />data: training<br />epoch: 13.481013<br />value: 0.0634128775","data: training<br />data: training<br />epoch: 13.848101<br />value: 0.0592552262","data: training<br />data: training<br />epoch: 14.215190<br />value: 0.0552764938","data: training<br />data: training<br />epoch: 14.582278<br />value: 0.0513710665","data: training<br />data: training<br />epoch: 14.949367<br />value: 0.0474333308","data: training<br />data: training<br />epoch: 15.316456<br />value: 0.0435927915","data: training<br />data: training<br />epoch: 15.683544<br />value: 0.0401666957","data: training<br />data: training<br />epoch: 16.050633<br />value: 0.0371093497","data: training<br />data: training<br />epoch: 16.417722<br />value: 0.0343692122","data: training<br />data: training<br />epoch: 16.784810<br />value: 0.0318947420","data: training<br />data: training<br />epoch: 17.151899<br />value: 0.0296343977","data: training<br />data: training<br />epoch: 17.518987<br />value: 0.0275366381","data: training<br />data: training<br />epoch: 17.886076<br />value: 0.0255499219","data: training<br />data: training<br />epoch: 18.253165<br />value: 0.0236227079","data: training<br />data: training<br />epoch: 18.620253<br />value: 0.0217034548","data: training<br />data: training<br />epoch: 18.987342<br />value: 0.0197406212","data: training<br />data: training<br />epoch: 19.354430<br />value: 0.0178386373","data: training<br />data: training<br />epoch: 19.721519<br />value: 0.0161424915","data: training<br />data: training<br />epoch: 20.088608<br />value: 0.0146289128","data: training<br />data: training<br />epoch: 20.455696<br />value: 0.0132744367","data: training<br />data: training<br />epoch: 20.822785<br />value: 0.0120555987","data: training<br />data: training<br />epoch: 21.189873<br />value: 0.0109489344","data: training<br />data: training<br />epoch: 21.556962<br />value: 0.0099309793","data: training<br />data: training<br />epoch: 21.924051<br />value: 0.0089782690","data: training<br />data: training<br />epoch: 22.291139<br />value: 0.0080673389","data: training<br />data: training<br />epoch: 22.658228<br />value: 0.0071747246","data: training<br />data: training<br />epoch: 23.025316<br />value: 0.0062772737","data: training<br />data: training<br />epoch: 23.392405<br />value: 0.0054293736","data: training<br />data: training<br />epoch: 23.759494<br />value: 0.0046815700","data: training<br />data: training<br />epoch: 24.126582<br />value: 0.0040304287","data: training<br />data: training<br />epoch: 24.493671<br />value: 0.0034725158","data: training<br />data: training<br />epoch: 24.860759<br />value: 0.0030043971","data: training<br />data: training<br />epoch: 25.227848<br />value: 0.0026226385","data: training<br />data: training<br />epoch: 25.594937<br />value: 0.0023238059","data: training<br />data: training<br />epoch: 25.962025<br />value: 0.0021044652","data: training<br />data: training<br />epoch: 26.329114<br />value: 0.0019611824","data: training<br />data: training<br />epoch: 26.696203<br />value: 0.0018905234","data: training<br />data: training<br />epoch: 27.063291<br />value: 0.0018891324","data: training<br />data: training<br />epoch: 27.430380<br />value: 0.0019581916","data: training<br />data: training<br />epoch: 27.797468<br />value: 0.0021008183","data: training<br />data: training<br />epoch: 28.164557<br />value: 0.0023189353","data: training<br />data: training<br />epoch: 28.531646<br />value: 0.0026144659","data: training<br />data: training<br />epoch: 28.898734<br />value: 0.0029893328","data: training<br />data: training<br />epoch: 29.265823<br />value: 0.0034454592","data: training<br />data: training<br />epoch: 29.632911<br />value: 0.0039847679","data: training<br />data: training<br />epoch: 30.000000<br />value: 0.0046091821"],"type":"scatter","mode":"lines","name":"training","line":{"width":3.77952755905512,"color":"rgba(248,118,109,1)","dash":"solid"},"hoveron":"points","legendgroup":"training","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"x":[1,1.36708860759494,1.73417721518987,2.10126582278481,2.46835443037975,2.83544303797468,3.20253164556962,3.56962025316456,3.93670886075949,4.30379746835443,4.67088607594937,5.0379746835443,5.40506329113924,5.77215189873418,6.13924050632911,6.50632911392405,6.87341772151899,7.24050632911392,7.60759493670886,7.9746835443038,8.34177215189873,8.70886075949367,9.07594936708861,9.44303797468354,9.81012658227848,10.1772151898734,10.5443037974684,10.9113924050633,11.2784810126582,11.6455696202532,12.0126582278481,12.379746835443,12.746835443038,13.1139240506329,13.4810126582278,13.8481012658228,14.2151898734177,14.5822784810127,14.9493670886076,15.3164556962025,15.6835443037975,16.0506329113924,16.4177215189873,16.7848101265823,17.1518987341772,17.5189873417722,17.8860759493671,18.253164556962,18.620253164557,18.9873417721519,19.3544303797468,19.7215189873418,20.0886075949367,20.4556962025316,20.8227848101266,21.1898734177215,21.5569620253165,21.9240506329114,22.2911392405063,22.6582278481013,23.0253164556962,23.3924050632911,23.7594936708861,24.126582278481,24.493670886076,24.8607594936709,25.2278481012658,25.5949367088608,25.9620253164557,26.3291139240506,26.6962025316456,27.0632911392405,27.4303797468354,27.7974683544304,28.1645569620253,28.5316455696203,28.8987341772152,29.2658227848101,29.6329113924051,30],"y":[0.299601878079288,0.277836090553164,0.256817728773429,0.236576641438703,0.217142677247605,0.198545684898756,0.180815513090776,0.163982010522285,0.148075025891904,0.133140948655945,0.119195495802304,0.106188486204569,0.0940686187714081,0.0827845924114884,0.0722851060334782,0.0625188585460456,0.0534345488578583,0.0449808758775846,0.0371065385138923,0.0297602356754493,0.0235027492271354,0.0189449234417713,0.0158223216416429,0.0138669769166346,0.0128109223566313,0.0123861910515173,0.0123248160911775,0.0123588305654963,0.0122202675643584,0.0116411601776484,0.0103543749953219,0.00887342129549282,0.00774398408317606,0.00688775105607265,0.00622640991188361,0.00568164834830998,0.00517515406305277,0.004628614753813,0.00396371811829169,0.00325927193373915,0.00272804808975083,0.00234644465360871,0.00208699865305708,0.00192224711584021,0.00182472706970236,0.00176697554238781,0.00172152956164083,0.0016609261552057,0.00155770235082668,0.00138439517624805,0.00118823772064617,0.00104018675977331,0.000932994884703321,0.000859323399085541,0.000811833606569327,0.000783186810804027,0.000766044315438991,0.000753067424123571,0.000736917440507116,0.000710255668238977,0.000665839681817463,0.000620388570234209,0.000589578366254173,0.00057246333746946,0.000568097751472176,0.000575535875854427,0.000593831978208318,0.000622040326125956,0.000659215187199447,0.000704410829020895,0.000756681519182407,0.000815105264685204,0.00088009780351959,0.000952555647512682,0.0010329952621323,0.00112193311284626,0.00121988566512239,0.0013273693844285,0.00144490073623242,0.00157299618600196],"text":["data: training<br />data: training<br />epoch:  1.000000<br />value: 0.2996018781","data: training<br />data: training<br />epoch:  1.367089<br />value: 0.2778360906","data: training<br />data: training<br />epoch:  1.734177<br />value: 0.2568177288","data: training<br />data: training<br />epoch:  2.101266<br />value: 0.2365766414","data: training<br />data: training<br />epoch:  2.468354<br />value: 0.2171426772","data: training<br />data: training<br />epoch:  2.835443<br />value: 0.1985456849","data: training<br />data: training<br />epoch:  3.202532<br />value: 0.1808155131","data: training<br />data: training<br />epoch:  3.569620<br />value: 0.1639820105","data: training<br />data: training<br />epoch:  3.936709<br />value: 0.1480750259","data: training<br />data: training<br />epoch:  4.303797<br />value: 0.1331409487","data: training<br />data: training<br />epoch:  4.670886<br />value: 0.1191954958","data: training<br />data: training<br />epoch:  5.037975<br />value: 0.1061884862","data: training<br />data: training<br />epoch:  5.405063<br />value: 0.0940686188","data: training<br />data: training<br />epoch:  5.772152<br />value: 0.0827845924","data: training<br />data: training<br />epoch:  6.139241<br />value: 0.0722851060","data: training<br />data: training<br />epoch:  6.506329<br />value: 0.0625188585","data: training<br />data: training<br />epoch:  6.873418<br />value: 0.0534345489","data: training<br />data: training<br />epoch:  7.240506<br />value: 0.0449808759","data: training<br />data: training<br />epoch:  7.607595<br />value: 0.0371065385","data: training<br />data: training<br />epoch:  7.974684<br />value: 0.0297602357","data: training<br />data: training<br />epoch:  8.341772<br />value: 0.0235027492","data: training<br />data: training<br />epoch:  8.708861<br />value: 0.0189449234","data: training<br />data: training<br />epoch:  9.075949<br />value: 0.0158223216","data: training<br />data: training<br />epoch:  9.443038<br />value: 0.0138669769","data: training<br />data: training<br />epoch:  9.810127<br />value: 0.0128109224","data: training<br />data: training<br />epoch: 10.177215<br />value: 0.0123861911","data: training<br />data: training<br />epoch: 10.544304<br />value: 0.0123248161","data: training<br />data: training<br />epoch: 10.911392<br />value: 0.0123588306","data: training<br />data: training<br />epoch: 11.278481<br />value: 0.0122202676","data: training<br />data: training<br />epoch: 11.645570<br />value: 0.0116411602","data: training<br />data: training<br />epoch: 12.012658<br />value: 0.0103543750","data: training<br />data: training<br />epoch: 12.379747<br />value: 0.0088734213","data: training<br />data: training<br />epoch: 12.746835<br />value: 0.0077439841","data: training<br />data: training<br />epoch: 13.113924<br />value: 0.0068877511","data: training<br />data: training<br />epoch: 13.481013<br />value: 0.0062264099","data: training<br />data: training<br />epoch: 13.848101<br />value: 0.0056816483","data: training<br />data: training<br />epoch: 14.215190<br />value: 0.0051751541","data: training<br />data: training<br />epoch: 14.582278<br />value: 0.0046286148","data: training<br />data: training<br />epoch: 14.949367<br />value: 0.0039637181","data: training<br />data: training<br />epoch: 15.316456<br />value: 0.0032592719","data: training<br />data: training<br />epoch: 15.683544<br />value: 0.0027280481","data: training<br />data: training<br />epoch: 16.050633<br />value: 0.0023464447","data: training<br />data: training<br />epoch: 16.417722<br />value: 0.0020869987","data: training<br />data: training<br />epoch: 16.784810<br />value: 0.0019222471","data: training<br />data: training<br />epoch: 17.151899<br />value: 0.0018247271","data: training<br />data: training<br />epoch: 17.518987<br />value: 0.0017669755","data: training<br />data: training<br />epoch: 17.886076<br />value: 0.0017215296","data: training<br />data: training<br />epoch: 18.253165<br />value: 0.0016609262","data: training<br />data: training<br />epoch: 18.620253<br />value: 0.0015577024","data: training<br />data: training<br />epoch: 18.987342<br />value: 0.0013843952","data: training<br />data: training<br />epoch: 19.354430<br />value: 0.0011882377","data: training<br />data: training<br />epoch: 19.721519<br />value: 0.0010401868","data: training<br />data: training<br />epoch: 20.088608<br />value: 0.0009329949","data: training<br />data: training<br />epoch: 20.455696<br />value: 0.0008593234","data: training<br />data: training<br />epoch: 20.822785<br />value: 0.0008118336","data: training<br />data: training<br />epoch: 21.189873<br />value: 0.0007831868","data: training<br />data: training<br />epoch: 21.556962<br />value: 0.0007660443","data: training<br />data: training<br />epoch: 21.924051<br />value: 0.0007530674","data: training<br />data: training<br />epoch: 22.291139<br />value: 0.0007369174","data: training<br />data: training<br />epoch: 22.658228<br />value: 0.0007102557","data: training<br />data: training<br />epoch: 23.025316<br />value: 0.0006658397","data: training<br />data: training<br />epoch: 23.392405<br />value: 0.0006203886","data: training<br />data: training<br />epoch: 23.759494<br />value: 0.0005895784","data: training<br />data: training<br />epoch: 24.126582<br />value: 0.0005724633","data: training<br />data: training<br />epoch: 24.493671<br />value: 0.0005680978","data: training<br />data: training<br />epoch: 24.860759<br />value: 0.0005755359","data: training<br />data: training<br />epoch: 25.227848<br />value: 0.0005938320","data: training<br />data: training<br />epoch: 25.594937<br />value: 0.0006220403","data: training<br />data: training<br />epoch: 25.962025<br />value: 0.0006592152","data: training<br />data: training<br />epoch: 26.329114<br />value: 0.0007044108","data: training<br />data: training<br />epoch: 26.696203<br />value: 0.0007566815","data: training<br />data: training<br />epoch: 27.063291<br />value: 0.0008151053","data: training<br />data: training<br />epoch: 27.430380<br />value: 0.0008800978","data: training<br />data: training<br />epoch: 27.797468<br />value: 0.0009525556","data: training<br />data: training<br />epoch: 28.164557<br />value: 0.0010329953","data: training<br />data: training<br />epoch: 28.531646<br />value: 0.0011219331","data: training<br />data: training<br />epoch: 28.898734<br />value: 0.0012198857","data: training<br />data: training<br />epoch: 29.265823<br />value: 0.0013273694","data: training<br />data: training<br />epoch: 29.632911<br />value: 0.0014449007","data: training<br />data: training<br />epoch: 30.000000<br />value: 0.0015729962"],"type":"scatter","mode":"lines","name":"training","line":{"width":3.77952755905512,"color":"rgba(248,118,109,1)","dash":"solid"},"hoveron":"points","legendgroup":"training","showlegend":false,"xaxis":"x","yaxis":"y2","hoverinfo":"text","frame":null},{"x":[1,1.36708860759494,1.73417721518987,2.10126582278481,2.46835443037975,2.83544303797468,3.20253164556962,3.56962025316456,3.93670886075949,4.30379746835443,4.67088607594937,5.0379746835443,5.40506329113924,5.77215189873418,6.13924050632911,6.50632911392405,6.87341772151899,7.24050632911392,7.60759493670886,7.9746835443038,8.34177215189873,8.70886075949367,9.07594936708861,9.44303797468354,9.81012658227848,10.1772151898734,10.5443037974684,10.9113924050633,11.2784810126582,11.6455696202532,12.0126582278481,12.379746835443,12.746835443038,13.1139240506329,13.4810126582278,13.8481012658228,14.2151898734177,14.5822784810127,14.9493670886076,15.3164556962025,15.6835443037975,16.0506329113924,16.4177215189873,16.7848101265823,17.1518987341772,17.5189873417722,17.8860759493671,18.253164556962,18.620253164557,18.9873417721519,19.3544303797468,19.7215189873418,20.0886075949367,20.4556962025316,20.8227848101266,21.1898734177215,21.5569620253165,21.9240506329114,22.2911392405063,22.6582278481013,23.0253164556962,23.3924050632911,23.7594936708861,24.126582278481,24.493670886076,24.8607594936709,25.2278481012658,25.5949367088608,25.9620253164557,26.3291139240506,26.6962025316456,27.0632911392405,27.4303797468354,27.7974683544304,28.1645569620253,28.5316455696203,28.8987341772152,29.2658227848101,29.6329113924051,30],"y":[0.393981269558931,0.372036425336119,0.350745979948875,0.330130388010556,0.310210104134516,0.291005582934113,0.272537279022701,0.254825647013638,0.237891141520278,0.221765549930212,0.20645960422593,0.191938854987241,0.178168085098981,0.16511207744599,0.152735614913106,0.141003480385167,0.12988045674701,0.119331326883476,0.1093208736794,0.0998138800196229,0.09120331709117,0.0839169182209091,0.0777699481306323,0.0725752016043808,0.0681454734261961,0.0642935583801197,0.0608322512501929,0.0575743468204571,0.0543326398749537,0.0509199251977241,0.0471496584743754,0.0434444505188622,0.040215687366506,0.0373714060731918,0.0348196436948049,0.0324684372872307,0.0302258239063542,0.0279998406080607,0.0256985244482355,0.0234260317137113,0.0214473718929624,0.0197278971711618,0.0182281054254308,0.016908494532891,0.0157295623706637,0.0146518068158704,0.0136357257456324,0.0126418170370712,0.0116305785673082,0.0105625082134649,0.00951343752106189,0.00859133915193342,0.00778095385827399,0.00706688005917484,0.00643371617372722,0.00586606062102234,0.00534851182015145,0.00486566819020577,0.00440212815027655,0.00394249011945502,0.0034715566840725,0.00302488107540495,0.00263557416032876,0.00230144602759658,0.00202030676596107,0.00178996646417492,0.00160823521099077,0.00147292309516131,0.00138184020543918,0.00133279663057706,0.00132360245932762,0.00135211883798234,0.00141914470597888,0.00152668694898812,0.00167596529691562,0.00186819947966691,0.00210460922714756,0.0023864142692631,0.0027148343359191,0.0030910891570211],"text":["data: training<br />data: training<br />epoch:  1.000000<br />value: 0.3939812696","data: training<br />data: training<br />epoch:  1.367089<br />value: 0.3720364253","data: training<br />data: training<br />epoch:  1.734177<br />value: 0.3507459799","data: training<br />data: training<br />epoch:  2.101266<br />value: 0.3301303880","data: training<br />data: training<br />epoch:  2.468354<br />value: 0.3102101041","data: training<br />data: training<br />epoch:  2.835443<br />value: 0.2910055829","data: training<br />data: training<br />epoch:  3.202532<br />value: 0.2725372790","data: training<br />data: training<br />epoch:  3.569620<br />value: 0.2548256470","data: training<br />data: training<br />epoch:  3.936709<br />value: 0.2378911415","data: training<br />data: training<br />epoch:  4.303797<br />value: 0.2217655499","data: training<br />data: training<br />epoch:  4.670886<br />value: 0.2064596042","data: training<br />data: training<br />epoch:  5.037975<br />value: 0.1919388550","data: training<br />data: training<br />epoch:  5.405063<br />value: 0.1781680851","data: training<br />data: training<br />epoch:  5.772152<br />value: 0.1651120774","data: training<br />data: training<br />epoch:  6.139241<br />value: 0.1527356149","data: training<br />data: training<br />epoch:  6.506329<br />value: 0.1410034804","data: training<br />data: training<br />epoch:  6.873418<br />value: 0.1298804567","data: training<br />data: training<br />epoch:  7.240506<br />value: 0.1193313269","data: training<br />data: training<br />epoch:  7.607595<br />value: 0.1093208737","data: training<br />data: training<br />epoch:  7.974684<br />value: 0.0998138800","data: training<br />data: training<br />epoch:  8.341772<br />value: 0.0912033171","data: training<br />data: training<br />epoch:  8.708861<br />value: 0.0839169182","data: training<br />data: training<br />epoch:  9.075949<br />value: 0.0777699481","data: training<br />data: training<br />epoch:  9.443038<br />value: 0.0725752016","data: training<br />data: training<br />epoch:  9.810127<br />value: 0.0681454734","data: training<br />data: training<br />epoch: 10.177215<br />value: 0.0642935584","data: training<br />data: training<br />epoch: 10.544304<br />value: 0.0608322513","data: training<br />data: training<br />epoch: 10.911392<br />value: 0.0575743468","data: training<br />data: training<br />epoch: 11.278481<br />value: 0.0543326399","data: training<br />data: training<br />epoch: 11.645570<br />value: 0.0509199252","data: training<br />data: training<br />epoch: 12.012658<br />value: 0.0471496585","data: training<br />data: training<br />epoch: 12.379747<br />value: 0.0434444505","data: training<br />data: training<br />epoch: 12.746835<br />value: 0.0402156874","data: training<br />data: training<br />epoch: 13.113924<br />value: 0.0373714061","data: training<br />data: training<br />epoch: 13.481013<br />value: 0.0348196437","data: training<br />data: training<br />epoch: 13.848101<br />value: 0.0324684373","data: training<br />data: training<br />epoch: 14.215190<br />value: 0.0302258239","data: training<br />data: training<br />epoch: 14.582278<br />value: 0.0279998406","data: training<br />data: training<br />epoch: 14.949367<br />value: 0.0256985244","data: training<br />data: training<br />epoch: 15.316456<br />value: 0.0234260317","data: training<br />data: training<br />epoch: 15.683544<br />value: 0.0214473719","data: training<br />data: training<br />epoch: 16.050633<br />value: 0.0197278972","data: training<br />data: training<br />epoch: 16.417722<br />value: 0.0182281054","data: training<br />data: training<br />epoch: 16.784810<br />value: 0.0169084945","data: training<br />data: training<br />epoch: 17.151899<br />value: 0.0157295624","data: training<br />data: training<br />epoch: 17.518987<br />value: 0.0146518068","data: training<br />data: training<br />epoch: 17.886076<br />value: 0.0136357257","data: training<br />data: training<br />epoch: 18.253165<br />value: 0.0126418170","data: training<br />data: training<br />epoch: 18.620253<br />value: 0.0116305786","data: training<br />data: training<br />epoch: 18.987342<br />value: 0.0105625082","data: training<br />data: training<br />epoch: 19.354430<br />value: 0.0095134375","data: training<br />data: training<br />epoch: 19.721519<br />value: 0.0085913392","data: training<br />data: training<br />epoch: 20.088608<br />value: 0.0077809539","data: training<br />data: training<br />epoch: 20.455696<br />value: 0.0070668801","data: training<br />data: training<br />epoch: 20.822785<br />value: 0.0064337162","data: training<br />data: training<br />epoch: 21.189873<br />value: 0.0058660606","data: training<br />data: training<br />epoch: 21.556962<br />value: 0.0053485118","data: training<br />data: training<br />epoch: 21.924051<br />value: 0.0048656682","data: training<br />data: training<br />epoch: 22.291139<br />value: 0.0044021282","data: training<br />data: training<br />epoch: 22.658228<br />value: 0.0039424901","data: training<br />data: training<br />epoch: 23.025316<br />value: 0.0034715567","data: training<br />data: training<br />epoch: 23.392405<br />value: 0.0030248811","data: training<br />data: training<br />epoch: 23.759494<br />value: 0.0026355742","data: training<br />data: training<br />epoch: 24.126582<br />value: 0.0023014460","data: training<br />data: training<br />epoch: 24.493671<br />value: 0.0020203068","data: training<br />data: training<br />epoch: 24.860759<br />value: 0.0017899665","data: training<br />data: training<br />epoch: 25.227848<br />value: 0.0016082352","data: training<br />data: training<br />epoch: 25.594937<br />value: 0.0014729231","data: training<br />data: training<br />epoch: 25.962025<br />value: 0.0013818402","data: training<br />data: training<br />epoch: 26.329114<br />value: 0.0013327966","data: training<br />data: training<br />epoch: 26.696203<br />value: 0.0013236025","data: training<br />data: training<br />epoch: 27.063291<br />value: 0.0013521188","data: training<br />data: training<br />epoch: 27.430380<br />value: 0.0014191447","data: training<br />data: training<br />epoch: 27.797468<br />value: 0.0015266869","data: training<br />data: training<br />epoch: 28.164557<br />value: 0.0016759653","data: training<br />data: training<br />epoch: 28.531646<br />value: 0.0018681995","data: training<br />data: training<br />epoch: 28.898734<br />value: 0.0021046092","data: training<br />data: training<br />epoch: 29.265823<br />value: 0.0023864143","data: training<br />data: training<br />epoch: 29.632911<br />value: 0.0027148343","data: training<br />data: training<br />epoch: 30.000000<br />value: 0.0030910892"],"type":"scatter","mode":"lines","name":"training","line":{"width":3.77952755905512,"color":"rgba(248,118,109,1)","dash":"solid"},"hoveron":"points","legendgroup":"training","showlegend":false,"xaxis":"x","yaxis":"y3","hoverinfo":"text","frame":null},{"x":[1,1.36708860759494,1.73417721518987,2.10126582278481,2.46835443037975,2.83544303797468,3.20253164556962,3.56962025316456,3.93670886075949,4.30379746835443,4.67088607594937,5.0379746835443,5.40506329113924,5.77215189873418,6.13924050632911,6.50632911392405,6.87341772151899,7.24050632911392,7.60759493670886,7.9746835443038,8.34177215189873,8.70886075949367,9.07594936708861,9.44303797468354,9.81012658227848,10.1772151898734,10.5443037974684,10.9113924050633,11.2784810126582,11.6455696202532,12.0126582278481,12.379746835443,12.746835443038,13.1139240506329,13.4810126582278,13.8481012658228,14.2151898734177,14.5822784810127,14.9493670886076,15.3164556962025,15.6835443037975,16.0506329113924,16.4177215189873,16.7848101265823,17.1518987341772,17.5189873417722,17.8860759493671,18.253164556962,18.620253164557,18.9873417721519,19.3544303797468,19.7215189873418,20.0886075949367,20.4556962025316,20.8227848101266,21.1898734177215,21.5569620253165,21.9240506329114,22.2911392405063,22.6582278481013,23.0253164556962,23.3924050632911,23.7594936708861,24.126582278481,24.493670886076,24.8607594936709,25.2278481012658,25.5949367088608,25.9620253164557,26.3291139240506,26.6962025316456,27.0632911392405,27.4303797468354,27.7974683544304,28.1645569620253,28.5316455696203,28.8987341772152,29.2658227848101,29.6329113924051,30],"y":[0.421742256717055,0.404184995341512,0.387032267713333,0.370287979586571,0.353956036715284,0.338040344853525,0.322544809755351,0.307473337174816,0.292829832865977,0.278620336150019,0.26484676236722,0.251502394791792,0.238580370743873,0.226073827543598,0.213975902511103,0.202279732966526,0.190978456230001,0.180065209621666,0.169533130461656,0.159375356070108,0.149686868457517,0.140570378706084,0.131982594431843,0.123879635087903,0.116217620127368,0.108952669003346,0.102040901168944,0.0954384360772676,0.0891013931814238,0.0829858919345193,0.0770483785395304,0.0715275056597577,0.0665855504408802,0.0621194179577549,0.0580260132852393,0.0542022414981905,0.0505450076714657,0.0469512168799222,0.0433177741984173,0.0397697841972402,0.0366152210927355,0.0338102714111973,0.0313054497584589,0.0290512707403536,0.0269982489627148,0.0250968990313756,0.0232977355521694,0.0215512731309295,0.0198080263734892,0.0180185098856818,0.0162823848546005,0.0147384034937756,0.0133645905626788,0.0121387859980414,0.0110388297365946,0.0100425617150699,0.00912782187019852,0.00827245013871175,0.00745428645734093,0.00665117076281736,0.00584123761199132,0.00507583011045448,0.00440267503577191,0.00381853900238466,0.0033201886247338,0.00290439051726039,0.00256791129440551,0.0023075175706102,0.00211997596031555,0.00200205307796262,0.00195051553799246,0.00196220393109756,0.00203823889139513,0.00218155868746121,0.00239397281955612,0.00267729078794019,0.00303332209287372,0.00346387623461704,0.00397076271343046,0.0045557910295743],"text":["data: validation<br />data: validation<br />epoch:  1.000000<br />value: 0.4217422567","data: validation<br />data: validation<br />epoch:  1.367089<br />value: 0.4041849953","data: validation<br />data: validation<br />epoch:  1.734177<br />value: 0.3870322677","data: validation<br />data: validation<br />epoch:  2.101266<br />value: 0.3702879796","data: validation<br />data: validation<br />epoch:  2.468354<br />value: 0.3539560367","data: validation<br />data: validation<br />epoch:  2.835443<br />value: 0.3380403449","data: validation<br />data: validation<br />epoch:  3.202532<br />value: 0.3225448098","data: validation<br />data: validation<br />epoch:  3.569620<br />value: 0.3074733372","data: validation<br />data: validation<br />epoch:  3.936709<br />value: 0.2928298329","data: validation<br />data: validation<br />epoch:  4.303797<br />value: 0.2786203362","data: validation<br />data: validation<br />epoch:  4.670886<br />value: 0.2648467624","data: validation<br />data: validation<br />epoch:  5.037975<br />value: 0.2515023948","data: validation<br />data: validation<br />epoch:  5.405063<br />value: 0.2385803707","data: validation<br />data: validation<br />epoch:  5.772152<br />value: 0.2260738275","data: validation<br />data: validation<br />epoch:  6.139241<br />value: 0.2139759025","data: validation<br />data: validation<br />epoch:  6.506329<br />value: 0.2022797330","data: validation<br />data: validation<br />epoch:  6.873418<br />value: 0.1909784562","data: validation<br />data: validation<br />epoch:  7.240506<br />value: 0.1800652096","data: validation<br />data: validation<br />epoch:  7.607595<br />value: 0.1695331305","data: validation<br />data: validation<br />epoch:  7.974684<br />value: 0.1593753561","data: validation<br />data: validation<br />epoch:  8.341772<br />value: 0.1496868685","data: validation<br />data: validation<br />epoch:  8.708861<br />value: 0.1405703787","data: validation<br />data: validation<br />epoch:  9.075949<br />value: 0.1319825944","data: validation<br />data: validation<br />epoch:  9.443038<br />value: 0.1238796351","data: validation<br />data: validation<br />epoch:  9.810127<br />value: 0.1162176201","data: validation<br />data: validation<br />epoch: 10.177215<br />value: 0.1089526690","data: validation<br />data: validation<br />epoch: 10.544304<br />value: 0.1020409012","data: validation<br />data: validation<br />epoch: 10.911392<br />value: 0.0954384361","data: validation<br />data: validation<br />epoch: 11.278481<br />value: 0.0891013932","data: validation<br />data: validation<br />epoch: 11.645570<br />value: 0.0829858919","data: validation<br />data: validation<br />epoch: 12.012658<br />value: 0.0770483785","data: validation<br />data: validation<br />epoch: 12.379747<br />value: 0.0715275057","data: validation<br />data: validation<br />epoch: 12.746835<br />value: 0.0665855504","data: validation<br />data: validation<br />epoch: 13.113924<br />value: 0.0621194180","data: validation<br />data: validation<br />epoch: 13.481013<br />value: 0.0580260133","data: validation<br />data: validation<br />epoch: 13.848101<br />value: 0.0542022415","data: validation<br />data: validation<br />epoch: 14.215190<br />value: 0.0505450077","data: validation<br />data: validation<br />epoch: 14.582278<br />value: 0.0469512169","data: validation<br />data: validation<br />epoch: 14.949367<br />value: 0.0433177742","data: validation<br />data: validation<br />epoch: 15.316456<br />value: 0.0397697842","data: validation<br />data: validation<br />epoch: 15.683544<br />value: 0.0366152211","data: validation<br />data: validation<br />epoch: 16.050633<br />value: 0.0338102714","data: validation<br />data: validation<br />epoch: 16.417722<br />value: 0.0313054498","data: validation<br />data: validation<br />epoch: 16.784810<br />value: 0.0290512707","data: validation<br />data: validation<br />epoch: 17.151899<br />value: 0.0269982490","data: validation<br />data: validation<br />epoch: 17.518987<br />value: 0.0250968990","data: validation<br />data: validation<br />epoch: 17.886076<br />value: 0.0232977356","data: validation<br />data: validation<br />epoch: 18.253165<br />value: 0.0215512731","data: validation<br />data: validation<br />epoch: 18.620253<br />value: 0.0198080264","data: validation<br />data: validation<br />epoch: 18.987342<br />value: 0.0180185099","data: validation<br />data: validation<br />epoch: 19.354430<br />value: 0.0162823849","data: validation<br />data: validation<br />epoch: 19.721519<br />value: 0.0147384035","data: validation<br />data: validation<br />epoch: 20.088608<br />value: 0.0133645906","data: validation<br />data: validation<br />epoch: 20.455696<br />value: 0.0121387860","data: validation<br />data: validation<br />epoch: 20.822785<br />value: 0.0110388297","data: validation<br />data: validation<br />epoch: 21.189873<br />value: 0.0100425617","data: validation<br />data: validation<br />epoch: 21.556962<br />value: 0.0091278219","data: validation<br />data: validation<br />epoch: 21.924051<br />value: 0.0082724501","data: validation<br />data: validation<br />epoch: 22.291139<br />value: 0.0074542865","data: validation<br />data: validation<br />epoch: 22.658228<br />value: 0.0066511708","data: validation<br />data: validation<br />epoch: 23.025316<br />value: 0.0058412376","data: validation<br />data: validation<br />epoch: 23.392405<br />value: 0.0050758301","data: validation<br />data: validation<br />epoch: 23.759494<br />value: 0.0044026750","data: validation<br />data: validation<br />epoch: 24.126582<br />value: 0.0038185390","data: validation<br />data: validation<br />epoch: 24.493671<br />value: 0.0033201886","data: validation<br />data: validation<br />epoch: 24.860759<br />value: 0.0029043905","data: validation<br />data: validation<br />epoch: 25.227848<br />value: 0.0025679113","data: validation<br />data: validation<br />epoch: 25.594937<br />value: 0.0023075176","data: validation<br />data: validation<br />epoch: 25.962025<br />value: 0.0021199760","data: validation<br />data: validation<br />epoch: 26.329114<br />value: 0.0020020531","data: validation<br />data: validation<br />epoch: 26.696203<br />value: 0.0019505155","data: validation<br />data: validation<br />epoch: 27.063291<br />value: 0.0019622039","data: validation<br />data: validation<br />epoch: 27.430380<br />value: 0.0020382389","data: validation<br />data: validation<br />epoch: 27.797468<br />value: 0.0021815587","data: validation<br />data: validation<br />epoch: 28.164557<br />value: 0.0023939728","data: validation<br />data: validation<br />epoch: 28.531646<br />value: 0.0026772908","data: validation<br />data: validation<br />epoch: 28.898734<br />value: 0.0030333221","data: validation<br />data: validation<br />epoch: 29.265823<br />value: 0.0034638762","data: validation<br />data: validation<br />epoch: 29.632911<br />value: 0.0039707627","data: validation<br />data: validation<br />epoch: 30.000000<br />value: 0.0045557910"],"type":"scatter","mode":"lines","name":"validation","line":{"width":3.77952755905512,"color":"rgba(0,191,196,1)","dash":"solid"},"hoveron":"points","legendgroup":"validation","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"x":[1,1.36708860759494,1.73417721518987,2.10126582278481,2.46835443037975,2.83544303797468,3.20253164556962,3.56962025316456,3.93670886075949,4.30379746835443,4.67088607594937,5.0379746835443,5.40506329113924,5.77215189873418,6.13924050632911,6.50632911392405,6.87341772151899,7.24050632911392,7.60759493670886,7.9746835443038,8.34177215189873,8.70886075949367,9.07594936708861,9.44303797468354,9.81012658227848,10.1772151898734,10.5443037974684,10.9113924050633,11.2784810126582,11.6455696202532,12.0126582278481,12.379746835443,12.746835443038,13.1139240506329,13.4810126582278,13.8481012658228,14.2151898734177,14.5822784810127,14.9493670886076,15.3164556962025,15.6835443037975,16.0506329113924,16.4177215189873,16.7848101265823,17.1518987341772,17.5189873417722,17.8860759493671,18.253164556962,18.620253164557,18.9873417721519,19.3544303797468,19.7215189873418,20.0886075949367,20.4556962025316,20.8227848101266,21.1898734177215,21.5569620253165,21.9240506329114,22.2911392405063,22.6582278481013,23.0253164556962,23.3924050632911,23.7594936708861,24.126582278481,24.493670886076,24.8607594936709,25.2278481012658,25.5949367088608,25.9620253164557,26.3291139240506,26.6962025316456,27.0632911392405,27.4303797468354,27.7974683544304,28.1645569620253,28.5316455696203,28.8987341772152,29.2658227848101,29.6329113924051,30],"y":[0.140409620313327,0.132826483328787,0.125454372277014,0.118296455778206,0.11135590245256,0.104635880920276,0.0981395598015502,0.0918701077165819,0.085830693285569,0.0800261537176155,0.0744579362692033,0.0691206076373123,0.0640086189072052,0.0591164211641449,0.0544384654933941,0.0499692029802155,0.045703084709872,0.0416345617676264,0.0377580852387413,0.0340681062084797,0.0306405972424546,0.0275578615074852,0.0247854212857188,0.0222883282483876,0.0200316340667242,0.0179803904119609,0.01609964895533,0.014354461368064,0.0127098793213953,0.0111309544865561,0.00958298135788339,0.0082418420719751,0.00722989863152401,0.00647305775023049,0.00589722614179485,0.00542831051991745,0.00499221759829862,0.0045148540906387,0.00392212671063804,0.0032869666289614,0.00280856655919686,0.00246558962816975,0.0022330909778382,0.00208612575016037,0.00199974908709439,0.0019490161305984,0.00190898202263054,0.00185470190514896,0.00176123092011179,0.00160362420947718,0.00142453561811316,0.0012882333801085,0.00118829230086346,0.00111820461674686,0.00107146256412749,0.00104155837937415,0.00102198429885566,0.00100623255894081,0.000987795395998414,0.000960165046397268,0.000916919070931342,0.000872873378304991,0.000841924185217705,0.000823236946708941,0.000815977117818154,0.000819310153584801,0.000832401509048337,0.00085441663924822,0.000884520999223904,0.000921880044014846,0.000965659228660502,0.00101504499431711,0.00107040577822005,0.00113253335398455,0.001201883235029,0.00127891093477178,0.00136407196663128,0.00145782184402589,0.00156061608037398,0.00167291018909394],"text":["data: validation<br />data: validation<br />epoch:  1.000000<br />value: 0.1404096203","data: validation<br />data: validation<br />epoch:  1.367089<br />value: 0.1328264833","data: validation<br />data: validation<br />epoch:  1.734177<br />value: 0.1254543723","data: validation<br />data: validation<br />epoch:  2.101266<br />value: 0.1182964558","data: validation<br />data: validation<br />epoch:  2.468354<br />value: 0.1113559025","data: validation<br />data: validation<br />epoch:  2.835443<br />value: 0.1046358809","data: validation<br />data: validation<br />epoch:  3.202532<br />value: 0.0981395598","data: validation<br />data: validation<br />epoch:  3.569620<br />value: 0.0918701077","data: validation<br />data: validation<br />epoch:  3.936709<br />value: 0.0858306933","data: validation<br />data: validation<br />epoch:  4.303797<br />value: 0.0800261537","data: validation<br />data: validation<br />epoch:  4.670886<br />value: 0.0744579363","data: validation<br />data: validation<br />epoch:  5.037975<br />value: 0.0691206076","data: validation<br />data: validation<br />epoch:  5.405063<br />value: 0.0640086189","data: validation<br />data: validation<br />epoch:  5.772152<br />value: 0.0591164212","data: validation<br />data: validation<br />epoch:  6.139241<br />value: 0.0544384655","data: validation<br />data: validation<br />epoch:  6.506329<br />value: 0.0499692030","data: validation<br />data: validation<br />epoch:  6.873418<br />value: 0.0457030847","data: validation<br />data: validation<br />epoch:  7.240506<br />value: 0.0416345618","data: validation<br />data: validation<br />epoch:  7.607595<br />value: 0.0377580852","data: validation<br />data: validation<br />epoch:  7.974684<br />value: 0.0340681062","data: validation<br />data: validation<br />epoch:  8.341772<br />value: 0.0306405972","data: validation<br />data: validation<br />epoch:  8.708861<br />value: 0.0275578615","data: validation<br />data: validation<br />epoch:  9.075949<br />value: 0.0247854213","data: validation<br />data: validation<br />epoch:  9.443038<br />value: 0.0222883282","data: validation<br />data: validation<br />epoch:  9.810127<br />value: 0.0200316341","data: validation<br />data: validation<br />epoch: 10.177215<br />value: 0.0179803904","data: validation<br />data: validation<br />epoch: 10.544304<br />value: 0.0160996490","data: validation<br />data: validation<br />epoch: 10.911392<br />value: 0.0143544614","data: validation<br />data: validation<br />epoch: 11.278481<br />value: 0.0127098793","data: validation<br />data: validation<br />epoch: 11.645570<br />value: 0.0111309545","data: validation<br />data: validation<br />epoch: 12.012658<br />value: 0.0095829814","data: validation<br />data: validation<br />epoch: 12.379747<br />value: 0.0082418421","data: validation<br />data: validation<br />epoch: 12.746835<br />value: 0.0072298986","data: validation<br />data: validation<br />epoch: 13.113924<br />value: 0.0064730578","data: validation<br />data: validation<br />epoch: 13.481013<br />value: 0.0058972261","data: validation<br />data: validation<br />epoch: 13.848101<br />value: 0.0054283105","data: validation<br />data: validation<br />epoch: 14.215190<br />value: 0.0049922176","data: validation<br />data: validation<br />epoch: 14.582278<br />value: 0.0045148541","data: validation<br />data: validation<br />epoch: 14.949367<br />value: 0.0039221267","data: validation<br />data: validation<br />epoch: 15.316456<br />value: 0.0032869666","data: validation<br />data: validation<br />epoch: 15.683544<br />value: 0.0028085666","data: validation<br />data: validation<br />epoch: 16.050633<br />value: 0.0024655896","data: validation<br />data: validation<br />epoch: 16.417722<br />value: 0.0022330910","data: validation<br />data: validation<br />epoch: 16.784810<br />value: 0.0020861258","data: validation<br />data: validation<br />epoch: 17.151899<br />value: 0.0019997491","data: validation<br />data: validation<br />epoch: 17.518987<br />value: 0.0019490161","data: validation<br />data: validation<br />epoch: 17.886076<br />value: 0.0019089820","data: validation<br />data: validation<br />epoch: 18.253165<br />value: 0.0018547019","data: validation<br />data: validation<br />epoch: 18.620253<br />value: 0.0017612309","data: validation<br />data: validation<br />epoch: 18.987342<br />value: 0.0016036242","data: validation<br />data: validation<br />epoch: 19.354430<br />value: 0.0014245356","data: validation<br />data: validation<br />epoch: 19.721519<br />value: 0.0012882334","data: validation<br />data: validation<br />epoch: 20.088608<br />value: 0.0011882923","data: validation<br />data: validation<br />epoch: 20.455696<br />value: 0.0011182046","data: validation<br />data: validation<br />epoch: 20.822785<br />value: 0.0010714626","data: validation<br />data: validation<br />epoch: 21.189873<br />value: 0.0010415584","data: validation<br />data: validation<br />epoch: 21.556962<br />value: 0.0010219843","data: validation<br />data: validation<br />epoch: 21.924051<br />value: 0.0010062326","data: validation<br />data: validation<br />epoch: 22.291139<br />value: 0.0009877954","data: validation<br />data: validation<br />epoch: 22.658228<br />value: 0.0009601650","data: validation<br />data: validation<br />epoch: 23.025316<br />value: 0.0009169191","data: validation<br />data: validation<br />epoch: 23.392405<br />value: 0.0008728734","data: validation<br />data: validation<br />epoch: 23.759494<br />value: 0.0008419242","data: validation<br />data: validation<br />epoch: 24.126582<br />value: 0.0008232369","data: validation<br />data: validation<br />epoch: 24.493671<br />value: 0.0008159771","data: validation<br />data: validation<br />epoch: 24.860759<br />value: 0.0008193102","data: validation<br />data: validation<br />epoch: 25.227848<br />value: 0.0008324015","data: validation<br />data: validation<br />epoch: 25.594937<br />value: 0.0008544166","data: validation<br />data: validation<br />epoch: 25.962025<br />value: 0.0008845210","data: validation<br />data: validation<br />epoch: 26.329114<br />value: 0.0009218800","data: validation<br />data: validation<br />epoch: 26.696203<br />value: 0.0009656592","data: validation<br />data: validation<br />epoch: 27.063291<br />value: 0.0010150450","data: validation<br />data: validation<br />epoch: 27.430380<br />value: 0.0010704058","data: validation<br />data: validation<br />epoch: 27.797468<br />value: 0.0011325334","data: validation<br />data: validation<br />epoch: 28.164557<br />value: 0.0012018832","data: validation<br />data: validation<br />epoch: 28.531646<br />value: 0.0012789109","data: validation<br />data: validation<br />epoch: 28.898734<br />value: 0.0013640720","data: validation<br />data: validation<br />epoch: 29.265823<br />value: 0.0014578218","data: validation<br />data: validation<br />epoch: 29.632911<br />value: 0.0015606161","data: validation<br />data: validation<br />epoch: 30.000000<br />value: 0.0016729102"],"type":"scatter","mode":"lines","name":"validation","line":{"width":3.77952755905512,"color":"rgba(0,191,196,1)","dash":"solid"},"hoveron":"points","legendgroup":"validation","showlegend":false,"xaxis":"x","yaxis":"y2","hoverinfo":"text","frame":null},{"x":[1,1.36708860759494,1.73417721518987,2.10126582278481,2.46835443037975,2.83544303797468,3.20253164556962,3.56962025316456,3.93670886075949,4.30379746835443,4.67088607594937,5.0379746835443,5.40506329113924,5.77215189873418,6.13924050632911,6.50632911392405,6.87341772151899,7.24050632911392,7.60759493670886,7.9746835443038,8.34177215189873,8.70886075949367,9.07594936708861,9.44303797468354,9.81012658227848,10.1772151898734,10.5443037974684,10.9113924050633,11.2784810126582,11.6455696202532,12.0126582278481,12.379746835443,12.746835443038,13.1139240506329,13.4810126582278,13.8481012658228,14.2151898734177,14.5822784810127,14.9493670886076,15.3164556962025,15.6835443037975,16.0506329113924,16.4177215189873,16.7848101265823,17.1518987341772,17.5189873417722,17.8860759493671,18.253164556962,18.620253164557,18.9873417721519,19.3544303797468,19.7215189873418,20.0886075949367,20.4556962025316,20.8227848101266,21.1898734177215,21.5569620253165,21.9240506329114,22.2911392405063,22.6582278481013,23.0253164556962,23.3924050632911,23.7594936708861,24.126582278481,24.493670886076,24.8607594936709,25.2278481012658,25.5949367088608,25.9620253164557,26.3291139240506,26.6962025316456,27.0632911392405,27.4303797468354,27.7974683544304,28.1645569620253,28.5316455696203,28.8987341772152,29.2658227848101,29.6329113924051,30],"y":[0.281075935506014,0.268505736575457,0.256243317476046,0.244292215394541,0.232655967517702,0.22133811103229,0.210342183125064,0.199671720982785,0.189330261792213,0.179323243817954,0.16965234835825,0.1603115003993,0.151294494144422,0.142595123796932,0.134207183560147,0.126124467637385,0.11834077023196,0.110849885547191,0.103645607786394,0.0967217311528856,0.090163732927995,0.0840641202288441,0.0783840080075962,0.0730839818295351,0.0681246272599447,0.0634665298641088,0.0590702752073113,0.054896448854836,0.0509056363719668,0.0470584233239876,0.0433156800626561,0.0398846739791366,0.0369077246399709,0.0342962379420327,0.0319616197821955,0.0298152760573329,0.0277686126643184,0.0257330355000258,0.0236199504613286,0.0215283754180236,0.0197118938305582,0.018137930525141,0.0167692703753915,0.0155686982549293,0.0144989990373738,0.0135229575963444,0.0126033588054608,0.0117029875383422,0.0107846286686083,0.00981106706987854,0.00885346025828628,0.0080133184580876,0.007276441451803,0.00662849532606658,0.00605514616751244,0.00554206006277466,0.00507490309848735,0.00463934136128461,0.00422104093780052,0.00380566791466919,0.00337907835079549,0.00297435175309589,0.00262229961850469,0.00232088798179038,0.00206808287772144,0.00186185034106635,0.0017001564065936,0.00158096710907167,0.00150224848326905,0.00146196656395422,0.00145808738589567,0.00148862446504524,0.00155432233706539,0.00165704602302436,0.00179792802974622,0.00197810086405502,0.00219869703277483,0.00246084904272971,0.00276568940074374,0.00311435061364096],"text":["data: validation<br />data: validation<br />epoch:  1.000000<br />value: 0.2810759355","data: validation<br />data: validation<br />epoch:  1.367089<br />value: 0.2685057366","data: validation<br />data: validation<br />epoch:  1.734177<br />value: 0.2562433175","data: validation<br />data: validation<br />epoch:  2.101266<br />value: 0.2442922154","data: validation<br />data: validation<br />epoch:  2.468354<br />value: 0.2326559675","data: validation<br />data: validation<br />epoch:  2.835443<br />value: 0.2213381110","data: validation<br />data: validation<br />epoch:  3.202532<br />value: 0.2103421831","data: validation<br />data: validation<br />epoch:  3.569620<br />value: 0.1996717210","data: validation<br />data: validation<br />epoch:  3.936709<br />value: 0.1893302618","data: validation<br />data: validation<br />epoch:  4.303797<br />value: 0.1793232438","data: validation<br />data: validation<br />epoch:  4.670886<br />value: 0.1696523484","data: validation<br />data: validation<br />epoch:  5.037975<br />value: 0.1603115004","data: validation<br />data: validation<br />epoch:  5.405063<br />value: 0.1512944941","data: validation<br />data: validation<br />epoch:  5.772152<br />value: 0.1425951238","data: validation<br />data: validation<br />epoch:  6.139241<br />value: 0.1342071836","data: validation<br />data: validation<br />epoch:  6.506329<br />value: 0.1261244676","data: validation<br />data: validation<br />epoch:  6.873418<br />value: 0.1183407702","data: validation<br />data: validation<br />epoch:  7.240506<br />value: 0.1108498855","data: validation<br />data: validation<br />epoch:  7.607595<br />value: 0.1036456078","data: validation<br />data: validation<br />epoch:  7.974684<br />value: 0.0967217312","data: validation<br />data: validation<br />epoch:  8.341772<br />value: 0.0901637329","data: validation<br />data: validation<br />epoch:  8.708861<br />value: 0.0840641202","data: validation<br />data: validation<br />epoch:  9.075949<br />value: 0.0783840080","data: validation<br />data: validation<br />epoch:  9.443038<br />value: 0.0730839818","data: validation<br />data: validation<br />epoch:  9.810127<br />value: 0.0681246273","data: validation<br />data: validation<br />epoch: 10.177215<br />value: 0.0634665299","data: validation<br />data: validation<br />epoch: 10.544304<br />value: 0.0590702752","data: validation<br />data: validation<br />epoch: 10.911392<br />value: 0.0548964489","data: validation<br />data: validation<br />epoch: 11.278481<br />value: 0.0509056364","data: validation<br />data: validation<br />epoch: 11.645570<br />value: 0.0470584233","data: validation<br />data: validation<br />epoch: 12.012658<br />value: 0.0433156801","data: validation<br />data: validation<br />epoch: 12.379747<br />value: 0.0398846740","data: validation<br />data: validation<br />epoch: 12.746835<br />value: 0.0369077246","data: validation<br />data: validation<br />epoch: 13.113924<br />value: 0.0342962379","data: validation<br />data: validation<br />epoch: 13.481013<br />value: 0.0319616198","data: validation<br />data: validation<br />epoch: 13.848101<br />value: 0.0298152761","data: validation<br />data: validation<br />epoch: 14.215190<br />value: 0.0277686127","data: validation<br />data: validation<br />epoch: 14.582278<br />value: 0.0257330355","data: validation<br />data: validation<br />epoch: 14.949367<br />value: 0.0236199505","data: validation<br />data: validation<br />epoch: 15.316456<br />value: 0.0215283754","data: validation<br />data: validation<br />epoch: 15.683544<br />value: 0.0197118938","data: validation<br />data: validation<br />epoch: 16.050633<br />value: 0.0181379305","data: validation<br />data: validation<br />epoch: 16.417722<br />value: 0.0167692704","data: validation<br />data: validation<br />epoch: 16.784810<br />value: 0.0155686983","data: validation<br />data: validation<br />epoch: 17.151899<br />value: 0.0144989990","data: validation<br />data: validation<br />epoch: 17.518987<br />value: 0.0135229576","data: validation<br />data: validation<br />epoch: 17.886076<br />value: 0.0126033588","data: validation<br />data: validation<br />epoch: 18.253165<br />value: 0.0117029875","data: validation<br />data: validation<br />epoch: 18.620253<br />value: 0.0107846287","data: validation<br />data: validation<br />epoch: 18.987342<br />value: 0.0098110671","data: validation<br />data: validation<br />epoch: 19.354430<br />value: 0.0088534603","data: validation<br />data: validation<br />epoch: 19.721519<br />value: 0.0080133185","data: validation<br />data: validation<br />epoch: 20.088608<br />value: 0.0072764415","data: validation<br />data: validation<br />epoch: 20.455696<br />value: 0.0066284953","data: validation<br />data: validation<br />epoch: 20.822785<br />value: 0.0060551462","data: validation<br />data: validation<br />epoch: 21.189873<br />value: 0.0055420601","data: validation<br />data: validation<br />epoch: 21.556962<br />value: 0.0050749031","data: validation<br />data: validation<br />epoch: 21.924051<br />value: 0.0046393414","data: validation<br />data: validation<br />epoch: 22.291139<br />value: 0.0042210409","data: validation<br />data: validation<br />epoch: 22.658228<br />value: 0.0038056679","data: validation<br />data: validation<br />epoch: 23.025316<br />value: 0.0033790784","data: validation<br />data: validation<br />epoch: 23.392405<br />value: 0.0029743518","data: validation<br />data: validation<br />epoch: 23.759494<br />value: 0.0026222996","data: validation<br />data: validation<br />epoch: 24.126582<br />value: 0.0023208880","data: validation<br />data: validation<br />epoch: 24.493671<br />value: 0.0020680829","data: validation<br />data: validation<br />epoch: 24.860759<br />value: 0.0018618503","data: validation<br />data: validation<br />epoch: 25.227848<br />value: 0.0017001564","data: validation<br />data: validation<br />epoch: 25.594937<br />value: 0.0015809671","data: validation<br />data: validation<br />epoch: 25.962025<br />value: 0.0015022485","data: validation<br />data: validation<br />epoch: 26.329114<br />value: 0.0014619666","data: validation<br />data: validation<br />epoch: 26.696203<br />value: 0.0014580874","data: validation<br />data: validation<br />epoch: 27.063291<br />value: 0.0014886245","data: validation<br />data: validation<br />epoch: 27.430380<br />value: 0.0015543223","data: validation<br />data: validation<br />epoch: 27.797468<br />value: 0.0016570460","data: validation<br />data: validation<br />epoch: 28.164557<br />value: 0.0017979280","data: validation<br />data: validation<br />epoch: 28.531646<br />value: 0.0019781009","data: validation<br />data: validation<br />epoch: 28.898734<br />value: 0.0021986970","data: validation<br />data: validation<br />epoch: 29.265823<br />value: 0.0024608490","data: validation<br />data: validation<br />epoch: 29.632911<br />value: 0.0027656894","data: validation<br />data: validation<br />epoch: 30.000000<br />value: 0.0031143506"],"type":"scatter","mode":"lines","name":"validation","line":{"width":3.77952755905512,"color":"rgba(0,191,196,1)","dash":"solid"},"hoveron":"points","legendgroup":"validation","showlegend":false,"xaxis":"x","yaxis":"y3","hoverinfo":"text","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],"y":[0.545779381667799,0.400856473299395,0.351704438643861,0.306737390944387,0.266083095149277,0.229580719754976,0.197055725224317,0.168212572902923,0.142779090416789,0.120505332371213,0.101097699078113,0.0843134745849616,0.0698835902978506,0.0575604897499868,0.0471194282503571,0.0383340799196949,0.0309981633023372,0.0249262517068388,0.019938833257367,0.0158768411592784,0.0126004074461185,0.00997650455862093,0.007902196176149,0.00627148417538306,0.00500555321366809,0.00403088968552489,0.00329075943881388,0.00273106061749106,0.00231442089861415,0.00200736763460561],"text":["data: 1<br />data: training<br />epoch:  1<br />value: 0.545779382","data: 1<br />data: training<br />epoch:  2<br />value: 0.400856473","data: 1<br />data: training<br />epoch:  3<br />value: 0.351704439","data: 1<br />data: training<br />epoch:  4<br />value: 0.306737391","data: 1<br />data: training<br />epoch:  5<br />value: 0.266083095","data: 1<br />data: training<br />epoch:  6<br />value: 0.229580720","data: 1<br />data: training<br />epoch:  7<br />value: 0.197055725","data: 1<br />data: training<br />epoch:  8<br />value: 0.168212573","data: 1<br />data: training<br />epoch:  9<br />value: 0.142779090","data: 1<br />data: training<br />epoch: 10<br />value: 0.120505332","data: 1<br />data: training<br />epoch: 11<br />value: 0.101097699","data: 1<br />data: training<br />epoch: 12<br />value: 0.084313475","data: 1<br />data: training<br />epoch: 13<br />value: 0.069883590","data: 1<br />data: training<br />epoch: 14<br />value: 0.057560490","data: 1<br />data: training<br />epoch: 15<br />value: 0.047119428","data: 1<br />data: training<br />epoch: 16<br />value: 0.038334080","data: 1<br />data: training<br />epoch: 17<br />value: 0.030998163","data: 1<br />data: training<br />epoch: 18<br />value: 0.024926252","data: 1<br />data: training<br />epoch: 19<br />value: 0.019938833","data: 1<br />data: training<br />epoch: 20<br />value: 0.015876841","data: 1<br />data: training<br />epoch: 21<br />value: 0.012600407","data: 1<br />data: training<br />epoch: 22<br />value: 0.009976505","data: 1<br />data: training<br />epoch: 23<br />value: 0.007902196","data: 1<br />data: training<br />epoch: 24<br />value: 0.006271484","data: 1<br />data: training<br />epoch: 25<br />value: 0.005005553","data: 1<br />data: training<br />epoch: 26<br />value: 0.004030890","data: 1<br />data: training<br />epoch: 27<br />value: 0.003290759","data: 1<br />data: training<br />epoch: 28<br />value: 0.002731061","data: 1<br />data: training<br />epoch: 29<br />value: 0.002314421","data: 1<br />data: training<br />epoch: 30<br />value: 0.002007368"],"type":"scatter","mode":"markers","marker":{"autocolorscale":false,"color":"rgba(248,118,109,1)","opacity":1,"size":5.66929133858268,"symbol":"circle","line":{"width":1.88976377952756,"color":"rgba(0,0,0,1)"}},"hoveron":"points","name":"(training,1)","legendgroup":"(training,1)","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],"y":[0.495253716249636,0.130709606097607,0.109126853820613,0.0892036758962628,0.0717106168807516,0.0570692336271117,0.0443674168575775,0.0341997625360166,0.0260343068290738,0.0195812621750791,0.0145798552977498,0.0107609295636704,0.00790680911849448,0.00580685899626511,0.00429266892903478,0.00322074915891567,0.00247725648372999,0.00197093764351771,0.00163182748185662,0.00141123405605114,0.00126953825027183,0.00117977714631458,0.00112573094702804,0.00109254121789492,0.00107289707159802,0.0010617192556509,0.00105546955804021,0.00105187833140722,0.00105000898539951,0.00104900722069099],"text":["data: 1<br />data: training<br />epoch:  1<br />value: 0.495253716","data: 1<br />data: training<br />epoch:  2<br />value: 0.130709606","data: 1<br />data: training<br />epoch:  3<br />value: 0.109126854","data: 1<br />data: training<br />epoch:  4<br />value: 0.089203676","data: 1<br />data: training<br />epoch:  5<br />value: 0.071710617","data: 1<br />data: training<br />epoch:  6<br />value: 0.057069234","data: 1<br />data: training<br />epoch:  7<br />value: 0.044367417","data: 1<br />data: training<br />epoch:  8<br />value: 0.034199763","data: 1<br />data: training<br />epoch:  9<br />value: 0.026034307","data: 1<br />data: training<br />epoch: 10<br />value: 0.019581262","data: 1<br />data: training<br />epoch: 11<br />value: 0.014579855","data: 1<br />data: training<br />epoch: 12<br />value: 0.010760930","data: 1<br />data: training<br />epoch: 13<br />value: 0.007906809","data: 1<br />data: training<br />epoch: 14<br />value: 0.005806859","data: 1<br />data: training<br />epoch: 15<br />value: 0.004292669","data: 1<br />data: training<br />epoch: 16<br />value: 0.003220749","data: 1<br />data: training<br />epoch: 17<br />value: 0.002477256","data: 1<br />data: training<br />epoch: 18<br />value: 0.001970938","data: 1<br />data: training<br />epoch: 19<br />value: 0.001631827","data: 1<br />data: training<br />epoch: 20<br />value: 0.001411234","data: 1<br />data: training<br />epoch: 21<br />value: 0.001269538","data: 1<br />data: training<br />epoch: 22<br />value: 0.001179777","data: 1<br />data: training<br />epoch: 23<br />value: 0.001125731","data: 1<br />data: training<br />epoch: 24<br />value: 0.001092541","data: 1<br />data: training<br />epoch: 25<br />value: 0.001072897","data: 1<br />data: training<br />epoch: 26<br />value: 0.001061719","data: 1<br />data: training<br />epoch: 27<br />value: 0.001055470","data: 1<br />data: training<br />epoch: 28<br />value: 0.001051878","data: 1<br />data: training<br />epoch: 29<br />value: 0.001050009","data: 1<br />data: training<br />epoch: 30<br />value: 0.001049007"],"type":"scatter","mode":"markers","marker":{"autocolorscale":false,"color":"rgba(248,118,109,1)","opacity":1,"size":5.66929133858268,"symbol":"circle","line":{"width":1.88976377952756,"color":"rgba(0,0,0,1)"}},"hoveron":"points","name":"(training,2)","legendgroup":"(training,2)","showlegend":true,"xaxis":"x","yaxis":"y2","hoverinfo":"text","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],"y":[0.520516545062081,0.26578304063065,0.230415646738998,0.197970534774555,0.168896855802651,0.143324976732392,0.120711571760403,0.101206167783476,0.0844066986442671,0.0700432974213373,0.0578387772300234,0.0475372019893872,0.038895199570525,0.0316836744526382,0.0257060486797519,0.0207774144838989,0.0167377099114955,0.0134485946924204,0.0107853303907717,0.00864403753954394,0.00693497286075463,0.00557814085246776,0.00451396356492737,0.00368201271514222,0.00303922513006326,0.00254630445671564,0.00217311448257008,0.00189146946718223,0.00168221494133492,0.00152818743161254],"text":["data: 1<br />data: training<br />epoch:  1<br />value: 0.520516545","data: 1<br />data: training<br />epoch:  2<br />value: 0.265783041","data: 1<br />data: training<br />epoch:  3<br />value: 0.230415647","data: 1<br />data: training<br />epoch:  4<br />value: 0.197970535","data: 1<br />data: training<br />epoch:  5<br />value: 0.168896856","data: 1<br />data: training<br />epoch:  6<br />value: 0.143324977","data: 1<br />data: training<br />epoch:  7<br />value: 0.120711572","data: 1<br />data: training<br />epoch:  8<br />value: 0.101206168","data: 1<br />data: training<br />epoch:  9<br />value: 0.084406699","data: 1<br />data: training<br />epoch: 10<br />value: 0.070043297","data: 1<br />data: training<br />epoch: 11<br />value: 0.057838777","data: 1<br />data: training<br />epoch: 12<br />value: 0.047537202","data: 1<br />data: training<br />epoch: 13<br />value: 0.038895200","data: 1<br />data: training<br />epoch: 14<br />value: 0.031683674","data: 1<br />data: training<br />epoch: 15<br />value: 0.025706049","data: 1<br />data: training<br />epoch: 16<br />value: 0.020777414","data: 1<br />data: training<br />epoch: 17<br />value: 0.016737710","data: 1<br />data: training<br />epoch: 18<br />value: 0.013448595","data: 1<br />data: training<br />epoch: 19<br />value: 0.010785330","data: 1<br />data: training<br />epoch: 20<br />value: 0.008644038","data: 1<br />data: training<br />epoch: 21<br />value: 0.006934973","data: 1<br />data: training<br />epoch: 22<br />value: 0.005578141","data: 1<br />data: training<br />epoch: 23<br />value: 0.004513964","data: 1<br />data: training<br />epoch: 24<br />value: 0.003682013","data: 1<br />data: training<br />epoch: 25<br />value: 0.003039225","data: 1<br />data: training<br />epoch: 26<br />value: 0.002546304","data: 1<br />data: training<br />epoch: 27<br />value: 0.002173114","data: 1<br />data: training<br />epoch: 28<br />value: 0.001891469","data: 1<br />data: training<br />epoch: 29<br />value: 0.001682215","data: 1<br />data: training<br />epoch: 30<br />value: 0.001528187"],"type":"scatter","mode":"markers","marker":{"autocolorscale":false,"color":"rgba(248,118,109,1)","opacity":1,"size":5.66929133858268,"symbol":"circle","line":{"width":1.88976377952756,"color":"rgba(0,0,0,1)"}},"hoveron":"points","name":"(training,3)","legendgroup":"(training,3)","showlegend":true,"xaxis":"x","yaxis":"y3","hoverinfo":"text","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],"y":[0.427844646302137,0.376752276312221,0.329571268775246,0.286724597215652,0.248142459175803,0.213627793572166,0.182950710708445,0.155808039686897,0.131966478445313,0.111114690249616,0.0930359824137254,0.0774245499209924,0.0640435147691857,0.0526685183021155,0.043052383444526,0.0349906777793711,0.0282899053259329,0.0227514485066587,0.0182182859968055,0.0145443898879669,0.0115856672213836,0.00923677491532131,0.00737170578742569,0.00591617907312783,0.00478812319819223,0.00392532896843146,0.00326352869160473,0.00276818721216511,0.00239943935197185,0.00212664939251474],"text":["data: 1<br />data: validation<br />epoch:  1<br />value: 0.427844646","data: 1<br />data: validation<br />epoch:  2<br />value: 0.376752276","data: 1<br />data: validation<br />epoch:  3<br />value: 0.329571269","data: 1<br />data: validation<br />epoch:  4<br />value: 0.286724597","data: 1<br />data: validation<br />epoch:  5<br />value: 0.248142459","data: 1<br />data: validation<br />epoch:  6<br />value: 0.213627794","data: 1<br />data: validation<br />epoch:  7<br />value: 0.182950711","data: 1<br />data: validation<br />epoch:  8<br />value: 0.155808040","data: 1<br />data: validation<br />epoch:  9<br />value: 0.131966478","data: 1<br />data: validation<br />epoch: 10<br />value: 0.111114690","data: 1<br />data: validation<br />epoch: 11<br />value: 0.093035982","data: 1<br />data: validation<br />epoch: 12<br />value: 0.077424550","data: 1<br />data: validation<br />epoch: 13<br />value: 0.064043515","data: 1<br />data: validation<br />epoch: 14<br />value: 0.052668518","data: 1<br />data: validation<br />epoch: 15<br />value: 0.043052383","data: 1<br />data: validation<br />epoch: 16<br />value: 0.034990678","data: 1<br />data: validation<br />epoch: 17<br />value: 0.028289905","data: 1<br />data: validation<br />epoch: 18<br />value: 0.022751449","data: 1<br />data: validation<br />epoch: 19<br />value: 0.018218286","data: 1<br />data: validation<br />epoch: 20<br />value: 0.014544390","data: 1<br />data: validation<br />epoch: 21<br />value: 0.011585667","data: 1<br />data: validation<br />epoch: 22<br />value: 0.009236775","data: 1<br />data: validation<br />epoch: 23<br />value: 0.007371706","data: 1<br />data: validation<br />epoch: 24<br />value: 0.005916179","data: 1<br />data: validation<br />epoch: 25<br />value: 0.004788123","data: 1<br />data: validation<br />epoch: 26<br />value: 0.003925329","data: 1<br />data: validation<br />epoch: 27<br />value: 0.003263529","data: 1<br />data: validation<br />epoch: 28<br />value: 0.002768187","data: 1<br />data: validation<br />epoch: 29<br />value: 0.002399439","data: 1<br />data: validation<br />epoch: 30<br />value: 0.002126649"],"type":"scatter","mode":"markers","marker":{"autocolorscale":false,"color":"rgba(0,191,196,1)","opacity":1,"size":5.66929133858268,"symbol":"circle","line":{"width":1.88976377952756,"color":"rgba(0,0,0,1)"}},"hoveron":"points","name":"(validation,1)","legendgroup":"(validation,1)","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],"y":[0.144415434111248,0.122403265400366,0.101196710358966,0.0821974250403318,0.0657991868528453,0.0519595156339082,0.040513350204988,0.0312159681184725,0.0237798077816313,0.017955214462497,0.013445900329812,0.0100344592197375,0.00747515985064886,0.00559725646268238,0.00424218387342989,0.00328145874664187,0.00260592685927722,0.00214101312766698,0.00182941891464659,0.00161609875927256,0.00147383528317071,0.00138353027234023,0.00132125245661221,0.00128132863689891,0.00125612051818859,0.0012386970708824,0.00122685747390444,0.00121962606102567,0.00121483497787267,0.00121097768318247],"text":["data: 1<br />data: validation<br />epoch:  1<br />value: 0.144415434","data: 1<br />data: validation<br />epoch:  2<br />value: 0.122403265","data: 1<br />data: validation<br />epoch:  3<br />value: 0.101196710","data: 1<br />data: validation<br />epoch:  4<br />value: 0.082197425","data: 1<br />data: validation<br />epoch:  5<br />value: 0.065799187","data: 1<br />data: validation<br />epoch:  6<br />value: 0.051959516","data: 1<br />data: validation<br />epoch:  7<br />value: 0.040513350","data: 1<br />data: validation<br />epoch:  8<br />value: 0.031215968","data: 1<br />data: validation<br />epoch:  9<br />value: 0.023779808","data: 1<br />data: validation<br />epoch: 10<br />value: 0.017955214","data: 1<br />data: validation<br />epoch: 11<br />value: 0.013445900","data: 1<br />data: validation<br />epoch: 12<br />value: 0.010034459","data: 1<br />data: validation<br />epoch: 13<br />value: 0.007475160","data: 1<br />data: validation<br />epoch: 14<br />value: 0.005597256","data: 1<br />data: validation<br />epoch: 15<br />value: 0.004242184","data: 1<br />data: validation<br />epoch: 16<br />value: 0.003281459","data: 1<br />data: validation<br />epoch: 17<br />value: 0.002605927","data: 1<br />data: validation<br />epoch: 18<br />value: 0.002141013","data: 1<br />data: validation<br />epoch: 19<br />value: 0.001829419","data: 1<br />data: validation<br />epoch: 20<br />value: 0.001616099","data: 1<br />data: validation<br />epoch: 21<br />value: 0.001473835","data: 1<br />data: validation<br />epoch: 22<br />value: 0.001383530","data: 1<br />data: validation<br />epoch: 23<br />value: 0.001321252","data: 1<br />data: validation<br />epoch: 24<br />value: 0.001281329","data: 1<br />data: validation<br />epoch: 25<br />value: 0.001256121","data: 1<br />data: validation<br />epoch: 26<br />value: 0.001238697","data: 1<br />data: validation<br />epoch: 27<br />value: 0.001226857","data: 1<br />data: validation<br />epoch: 28<br />value: 0.001219626","data: 1<br />data: validation<br />epoch: 29<br />value: 0.001214835","data: 1<br />data: validation<br />epoch: 30<br />value: 0.001210978"],"type":"scatter","mode":"markers","marker":{"autocolorscale":false,"color":"rgba(0,191,196,1)","opacity":1,"size":5.66929133858268,"symbol":"circle","line":{"width":1.88976377952756,"color":"rgba(0,0,0,1)"}},"hoveron":"points","name":"(validation,2)","legendgroup":"(validation,2)","showlegend":true,"xaxis":"x","yaxis":"y2","hoverinfo":"text","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],"y":[0.286130035465414,0.249577770178968,0.21538398753513,0.184461009773341,0.156970823352987,0.132793654095043,0.111732030456716,0.0935120047493414,0.0778731426054781,0.0645349530333822,0.0532409413294359,0.0437295044010336,0.0357593369077552,0.0291328877210617,0.0236472837965597,0.0191360681571744,0.0154479161243547,0.0124462308700789,0.0100238524716009,0.00808024431832812,0.00652975127608939,0.00531015261499719,0.00434647911143574,0.00359875384972177,0.00302212183702398,0.00258201301436533,0.0022451930933378,0.00199390662072057,0.00180713717021387,0.00166881356430663],"text":["data: 1<br />data: validation<br />epoch:  1<br />value: 0.286130035","data: 1<br />data: validation<br />epoch:  2<br />value: 0.249577770","data: 1<br />data: validation<br />epoch:  3<br />value: 0.215383988","data: 1<br />data: validation<br />epoch:  4<br />value: 0.184461010","data: 1<br />data: validation<br />epoch:  5<br />value: 0.156970823","data: 1<br />data: validation<br />epoch:  6<br />value: 0.132793654","data: 1<br />data: validation<br />epoch:  7<br />value: 0.111732030","data: 1<br />data: validation<br />epoch:  8<br />value: 0.093512005","data: 1<br />data: validation<br />epoch:  9<br />value: 0.077873143","data: 1<br />data: validation<br />epoch: 10<br />value: 0.064534953","data: 1<br />data: validation<br />epoch: 11<br />value: 0.053240941","data: 1<br />data: validation<br />epoch: 12<br />value: 0.043729504","data: 1<br />data: validation<br />epoch: 13<br />value: 0.035759337","data: 1<br />data: validation<br />epoch: 14<br />value: 0.029132888","data: 1<br />data: validation<br />epoch: 15<br />value: 0.023647284","data: 1<br />data: validation<br />epoch: 16<br />value: 0.019136068","data: 1<br />data: validation<br />epoch: 17<br />value: 0.015447916","data: 1<br />data: validation<br />epoch: 18<br />value: 0.012446231","data: 1<br />data: validation<br />epoch: 19<br />value: 0.010023852","data: 1<br />data: validation<br />epoch: 20<br />value: 0.008080244","data: 1<br />data: validation<br />epoch: 21<br />value: 0.006529751","data: 1<br />data: validation<br />epoch: 22<br />value: 0.005310153","data: 1<br />data: validation<br />epoch: 23<br />value: 0.004346479","data: 1<br />data: validation<br />epoch: 24<br />value: 0.003598754","data: 1<br />data: validation<br />epoch: 25<br />value: 0.003022122","data: 1<br />data: validation<br />epoch: 26<br />value: 0.002582013","data: 1<br />data: validation<br />epoch: 27<br />value: 0.002245193","data: 1<br />data: validation<br />epoch: 28<br />value: 0.001993907","data: 1<br />data: validation<br />epoch: 29<br />value: 0.001807137","data: 1<br />data: validation<br />epoch: 30<br />value: 0.001668814"],"type":"scatter","mode":"markers","marker":{"autocolorscale":false,"color":"rgba(0,191,196,1)","opacity":1,"size":5.66929133858268,"symbol":"circle","line":{"width":1.88976377952756,"color":"rgba(0,0,0,1)"}},"hoveron":"points","name":"(validation,3)","legendgroup":"(validation,3)","showlegend":true,"xaxis":"x","yaxis":"y3","hoverinfo":"text","frame":null}],"layout":{"margin":{"t":40.8401826484018,"r":21.9178082191781,"b":40.1826484018265,"l":28.4931506849315},"plot_bgcolor":"rgba(235,235,235,1)","paper_bgcolor":"rgba(255,255,255,1)","font":{"color":"rgba(0,0,0,1)","family":"","size":14.6118721461187},"xaxis":{"domain":[0,1],"type":"linear","autorange":false,"tickmode":"array","range":[-0.45,31.45],"ticktext":["0","5","10","15","20","25","30"],"tickvals":[0,5,10,15,20,25,30],"ticks":"outside","tickcolor":"rgba(51,51,51,1)","ticklen":3.65296803652968,"tickwidth":0.66417600664176,"showticklabels":true,"tickfont":{"color":"rgba(77,77,77,1)","family":"","size":11.689497716895},"tickangle":-0,"showline":false,"linecolor":null,"linewidth":0,"showgrid":true,"gridcolor":"rgba(255,255,255,1)","gridwidth":0.66417600664176,"zeroline":false,"anchor":"y3","title":"","titlefont":{"color":"rgba(0,0,0,1)","family":"","size":14.6118721461187},"hoverformat":".2f"},"annotations":[{"text":"epoch","x":0.5,"y":-0.0471841704718417,"showarrow":false,"ax":0,"ay":0,"font":{"color":"rgba(0,0,0,1)","family":"","size":14.6118721461187},"xref":"paper","yref":"paper","textangle":-0,"xanchor":"center","yanchor":"top","annotationType":"axis"},{"text":"output_y1_loss","x":1,"y":0.840943683409437,"showarrow":false,"ax":0,"ay":0,"font":{"color":"rgba(0,0,0,1)","family":"","size":14.6118721461187},"xref":"paper","yref":"paper","textangle":90,"xanchor":"left","yanchor":"middle"},{"text":"output_y2_loss","x":1,"y":0.5,"showarrow":false,"ax":0,"ay":0,"font":{"color":"rgba(0,0,0,1)","family":"","size":14.6118721461187},"xref":"paper","yref":"paper","textangle":90,"xanchor":"left","yanchor":"middle"},{"text":"loss","x":1,"y":0.159056316590563,"showarrow":false,"ax":0,"ay":0,"font":{"color":"rgba(0,0,0,1)","family":"","size":14.6118721461187},"xref":"paper","yref":"paper","textangle":90,"xanchor":"left","yanchor":"middle"},{"text":"data","x":1.02,"y":1,"showarrow":false,"ax":0,"ay":0,"font":{"color":"rgba(0,0,0,1)","family":"","size":14.6118721461187},"xref":"paper","yref":"paper","textangle":-0,"xanchor":"left","yanchor":"bottom","legendTitle":true}],"yaxis":{"domain":[0.681887366818874,1],"type":"linear","autorange":false,"tickmode":"array","range":[-0.025305380042494,0.572973894130194],"ticktext":["0.0","0.2","0.4"],"tickvals":[0,0.2,0.4],"ticks":"outside","tickcolor":"rgba(51,51,51,1)","ticklen":3.65296803652968,"tickwidth":0.66417600664176,"showticklabels":true,"tickfont":{"color":"rgba(77,77,77,1)","family":"","size":11.689497716895},"tickangle":-0,"showline":false,"linecolor":null,"linewidth":0,"showgrid":true,"gridcolor":"rgba(255,255,255,1)","gridwidth":0.66417600664176,"zeroline":false,"anchor":"x","title":"","titlefont":{"color":null,"family":null,"size":0},"hoverformat":".2f"},"shapes":[{"type":"rect","fillcolor":null,"line":{"color":null,"width":0,"linetype":[]},"yref":"paper","xref":"paper","x0":0,"x1":1,"y0":0.681887366818874,"y1":1},{"type":"rect","fillcolor":"transparent","line":{"color":"transparent","width":0.66417600664176,"linetype":"solid"},"yref":"paper","xref":"paper","x0":1,"x1":1.06186726659168,"y0":0.681887366818874,"y1":1},{"type":"rect","fillcolor":null,"line":{"color":null,"width":0,"linetype":[]},"yref":"paper","xref":"paper","x0":0,"x1":1,"y0":0.34855403348554,"y1":0.65144596651446},{"type":"rect","fillcolor":"transparent","line":{"color":"transparent","width":0.66417600664176,"linetype":"solid"},"yref":"paper","xref":"paper","x0":1,"x1":1.06186726659168,"y0":0.34855403348554,"y1":0.65144596651446},{"type":"rect","fillcolor":null,"line":{"color":null,"width":0,"linetype":[]},"yref":"paper","xref":"paper","x0":0,"x1":1,"y0":0,"y1":0.318112633181126},{"type":"rect","fillcolor":"transparent","line":{"color":"transparent","width":0.66417600664176,"linetype":"solid"},"yref":"paper","xref":"paper","x0":1,"x1":1.06186726659168,"y0":0,"y1":0.318112633181126}],"yaxis2":{"type":"linear","autorange":false,"tickmode":"array","range":[-0.024166183173436,0.519987997174544],"ticktext":["0.0","0.1","0.2","0.3","0.4","0.5"],"tickvals":[0,0.1,0.2,0.3,0.4,0.5],"ticks":"outside","tickcolor":"rgba(51,51,51,1)","ticklen":3.65296803652968,"tickwidth":0.66417600664176,"showticklabels":true,"tickfont":{"color":"rgba(77,77,77,1)","family":"","size":11.689497716895},"tickangle":-0,"showline":false,"linecolor":null,"linewidth":0,"showgrid":true,"domain":[0.34855403348554,0.65144596651446],"gridcolor":"rgba(255,255,255,1)","gridwidth":0.66417600664176,"zeroline":false,"anchor":"x","title":"","titlefont":{"color":null,"family":null,"size":0},"hoverformat":".2f"},"yaxis3":{"type":"linear","autorange":false,"tickmode":"array","range":[-0.0246360446708101,0.546476192192219],"ticktext":["0.0","0.1","0.2","0.3","0.4","0.5"],"tickvals":[0,0.1,0.2,0.3,0.4,0.5],"ticks":"outside","tickcolor":"rgba(51,51,51,1)","ticklen":3.65296803652968,"tickwidth":0.66417600664176,"showticklabels":true,"tickfont":{"color":"rgba(77,77,77,1)","family":"","size":11.689497716895},"tickangle":-0,"showline":false,"linecolor":null,"linewidth":0,"showgrid":true,"domain":[0,0.318112633181126],"gridcolor":"rgba(255,255,255,1)","gridwidth":0.66417600664176,"zeroline":false,"anchor":"x","title":"","titlefont":{"color":null,"family":null,"size":0},"hoverformat":".2f"},"showlegend":true,"legend":{"bgcolor":"rgba(255,255,255,1)","bordercolor":"transparent","borderwidth":1.88976377952756,"font":{"color":"rgba(0,0,0,1)","family":"","size":11.689497716895},"y":0.913385826771654},"hovermode":"closest"},"source":"A","attrs":{"5e0f15f2ab8":{"colour":{},"fill":{},"x":{},"y":{},"type":"ggplotly"},"5e0f17d864fb":{"colour":{},"fill":{},"x":{},"y":{}}},"cur_data":"5e0f15f2ab8","visdat":{"5e0f15f2ab8":["function (y) ","x"],"5e0f17d864fb":["function (y) ","x"]},"config":{"modeBarButtonsToAdd":[{"name":"Collaborate","icon":{"width":1000,"ascent":500,"descent":-50,"path":"M487 375c7-10 9-23 5-36l-79-259c-3-12-11-23-22-31-11-8-22-12-35-12l-263 0c-15 0-29 5-43 15-13 10-23 23-28 37-5 13-5 25-1 37 0 0 0 3 1 7 1 5 1 8 1 11 0 2 0 4-1 6 0 3-1 5-1 6 1 2 2 4 3 6 1 2 2 4 4 6 2 3 4 5 5 7 5 7 9 16 13 26 4 10 7 19 9 26 0 2 0 5 0 9-1 4-1 6 0 8 0 2 2 5 4 8 3 3 5 5 5 7 4 6 8 15 12 26 4 11 7 19 7 26 1 1 0 4 0 9-1 4-1 7 0 8 1 2 3 5 6 8 4 4 6 6 6 7 4 5 8 13 13 24 4 11 7 20 7 28 1 1 0 4 0 7-1 3-1 6-1 7 0 2 1 4 3 6 1 1 3 4 5 6 2 3 3 5 5 6 1 2 3 5 4 9 2 3 3 7 5 10 1 3 2 6 4 10 2 4 4 7 6 9 2 3 4 5 7 7 3 2 7 3 11 3 3 0 8 0 13-1l0-1c7 2 12 2 14 2l218 0c14 0 25-5 32-16 8-10 10-23 6-37l-79-259c-7-22-13-37-20-43-7-7-19-10-37-10l-248 0c-5 0-9-2-11-5-2-3-2-7 0-12 4-13 18-20 41-20l264 0c5 0 10 2 16 5 5 3 8 6 10 11l85 282c2 5 2 10 2 17 7-3 13-7 17-13z m-304 0c-1-3-1-5 0-7 1-1 3-2 6-2l174 0c2 0 4 1 7 2 2 2 4 4 5 7l6 18c0 3 0 5-1 7-1 1-3 2-6 2l-173 0c-3 0-5-1-8-2-2-2-4-4-4-7z m-24-73c-1-3-1-5 0-7 2-2 3-2 6-2l174 0c2 0 5 0 7 2 3 2 4 4 5 7l6 18c1 2 0 5-1 6-1 2-3 3-5 3l-174 0c-3 0-5-1-7-3-3-1-4-4-5-6z"},"click":"function(gd) { \n        // is this being viewed in RStudio?\n        if (location.search == '?viewer_pane=1') {\n          alert('To learn about plotly for collaboration, visit:\\n https://cpsievert.github.io/plotly_book/plot-ly-for-collaboration.html');\n        } else {\n          window.open('https://cpsievert.github.io/plotly_book/plot-ly-for-collaboration.html', '_blank');\n        }\n      }"}],"cloud":false},"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1}},"base_url":"https://plot.ly"},"evals":["config.modeBarButtonsToAdd.0.click"],"jsHooks":{"render":[{"code":"function(el, x) { var ctConfig = crosstalk.var('plotlyCrosstalkOpts').set({\"on\":\"plotly_click\",\"persistent\":false,\"dynamic\":false,\"selectize\":false,\"opacityDim\":0.2,\"selected\":{\"opacity\":1}}); }","data":null}]}}</script>
+</div>
+<div id="predict-on-my-left-eye" class="section level2">
+<h2>Predict on my left eye</h2>
+<pre class="r"><code>miles_face &lt;- 
+  read_rds(&quot;../data/mm_face_vector.rds&quot;)
+# A cropped square selfie.
+# Preprocessing with magick in /code/preprocess_a_selfie.R
+  
+
+miles_face_matrix &lt;-
+  miles_face %&gt;%
+  `/`(256) %&gt;%
+  matrix(nrow = 1, ncol = 96*96 )
+
+eye_prediction &lt;- 
+  model %&gt;%
+  predict_on_batch(miles_face_matrix)
+
+image(matrix(miles_face %&gt;% rev(), 96, 96) , col = gray.colors(256)) # Have to reverse image for upright viewing
+points(x = 1- eye_prediction[[1]], y= 1- eye_prediction[[2]]) # Reversed image -&gt; Take compliement of coord.</code></pre>
+<p><img src="figure/baseline_model.Rmd/unnamed-chunk-10-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Not bad for a baseline model. Can I do better with convolutions? Most likely! ## Session information</p>
+<!-- Insert the session information into the document -->
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 3.4.1 (2017-06-30)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 17.04
+
+Matrix products: default
+BLAS: /usr/lib/libblas/libblas.so.3.7.0
+LAPACK: /usr/lib/lapack/liblapack.so.3.7.0
+
+locale:
+ [1] LC_CTYPE=en_AU.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_AU.UTF-8        LC_COLLATE=en_AU.UTF-8    
+ [5] LC_MONETARY=en_AU.UTF-8    LC_MESSAGES=en_AU.UTF-8   
+ [7] LC_PAPER=en_AU.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_AU.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] bindrcpp_0.2  plotly_4.7.1  ggplot2_2.2.1 keras_2.0.6   readr_1.1.1  
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_0.12.12      compiler_3.4.1    git2r_0.19.0     
+ [4] plyr_1.8.4        bindr_0.1         tools_3.4.1      
+ [7] digest_0.6.12     viridisLite_0.2.0 jsonlite_1.5     
+[10] evaluate_0.10.1   tibble_1.3.4      gtable_0.2.0     
+[13] pkgconfig_2.0.1   rlang_0.1.2       shiny_1.0.5      
+[16] crosstalk_1.0.0   yaml_2.1.14       httr_1.3.1       
+[19] stringr_1.2.0     dplyr_0.7.3       knitr_1.17       
+[22] htmlwidgets_0.9   hms_0.3           rprojroot_1.2    
+[25] grid_3.4.1        reticulate_1.1    glue_1.1.1       
+[28] data.table_1.10.4 R6_2.2.2          rmarkdown_1.6    
+[31] reshape2_1.4.2    tidyr_0.7.1       purrr_0.2.3      
+[34] magrittr_1.5      backports_1.1.0   scales_0.5.0     
+[37] tfruns_0.9.1      htmltools_0.3.6   assertthat_0.2.0 
+[40] xtable_1.8-2      mime_0.5          colorspace_1.3-2 
+[43] httpuv_1.3.5      labeling_0.3      tensorflow_1.3.1 
+[46] stringi_1.1.5     lazyeval_0.2.0    munsell_0.4.3    </code></pre>
+</div>
+</div>
+
+<hr>
+<p>
+    This <a href="http://rmarkdown.rstudio.com">R Markdown</a> site was created with <a href="https://github.com/jdblischak/workflowr">workflowr</a>
+</p>
+<hr>
+
+<!-- To enable disqus, uncomment the section below and provide your disqus_shortname -->
+
+<!-- disqus
+  <div id="disqus_thread"></div>
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'rmarkdown'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+-->
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
