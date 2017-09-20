@@ -93,6 +93,7 @@ model
 
 
 ## Compile model
+
 ```{r}
 model %>%
   compile(loss = 'mean_squared_error', #MSE for continuous output
@@ -100,6 +101,7 @@ model %>%
 ```
 
 ## Fit model
+
 ```{r}
 fit_progress <- 
   model %>%
@@ -116,8 +118,7 @@ plot(fit_progress)
 ggplotly()
 ```
 
-
-##Load
+## Predict on my left eye
 
 ## Session information
 
