@@ -36,7 +36,7 @@ Get the training set:
 ```{r, results="hide"}
 library(readr)
 library(keras)
-library(plotly)
+library(dplyr)
 
 train_set <- read_rds("../data/train_processed")
 # Original data from: https://www.kaggle.com/c/facial-keypoints-detection
@@ -131,10 +131,9 @@ fit_progress <-
 ## Visualise Model
 ```{r}
 plot(fit_progress)
-ggplotly()
 ```
 
-## Predict on my left eye
+## Predict my eye
 ```{r}
 miles_face <- 
   read_rds("../data/mm_face_vector.rds")
@@ -156,6 +155,7 @@ points(x = 1- eye_prediction[[1]], y= 1- eye_prediction[[2]]) # Reversed image -
 ```
 
 Not bad for a baseline model. Can I do better with convolutions? Most likely!
+
 ## Session information
 
 <!-- Insert the session information into the document -->

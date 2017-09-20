@@ -5,15 +5,12 @@ output:
     toc: false
 ---
 
-What license are you using for your code? See [choosealicense.com][choose] for
-help deciding. And don't forget to update the file `LICENSE` in the root of your
-Git repo.
 
-What license are you using for the written content on your site? It is
-traditional to choose a [Creative Commons][cc] license for this type of content.
+## Code
+MIT License
 
-[choose]: http://choosealicense.com/
-[cc]: https://creativecommons.org/choose/
+Copyright (c) 2017 Miles McBain
 
-How should others cite your work? Don't forget to update the file `CITATION` in
-the root of your Git repo.
+## Written Content
+
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
