@@ -5,7 +5,8 @@ library(magick)
 miles_face <-
   drive_download(
     file = as_id("https://drive.google.com/open?id=0B7688WPR38x2VVhSTk5CaE9hMXM"),
-    path = "../data/miles_face.jpg")
+    path = "../data/miles_face.jpg",
+    overwrite = TRUE)
 
 
 mm_face <- image_read("../data/miles_face.jpg")
